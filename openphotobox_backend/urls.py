@@ -34,7 +34,6 @@ urlpatterns = [
     path("api/assets/", include("assets.urls")),  # Asset management, albums, uploads
     path("api/people/", include("people.urls")),  # People, faces, recognition
     path("api/metadata/", include("metadata.urls")),  # EXIF, keywords, CLIP embeddings
-    path("api/sharing/", include("sharing.urls")),  # Sharing management (admin)
     path("api/events/stream/", stream_events, name="sse-events"),
     # Authentication endpoints can be added here later
     # path('api/auth/', include('rest_framework.urls')),
