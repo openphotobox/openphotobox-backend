@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 from PIL import Image
 import warnings  # added for DATABASE_URL fallback warning
+
 try:
     import dj_database_url  # added for DATABASE_URL parsing
 except ImportError:  # pragma: no cover
@@ -27,7 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-#y&_h&*#njzu!$#jqp(ir1_u1)$kiv^^&4lj@&vmi=j+2yhh-='
+SECRET_KEY = "django-insecure-#y&_h&*#njzu!$#jqp(ir1_u1)$kiv^^&4lj@&vmi=j+2yhh-="
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -38,56 +39,53 @@ ALLOWED_HOSTS = ["*"]
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     # Third party apps
-    'rest_framework',
-    'rest_framework.authtoken',
-    'corsheaders',
-    'drf_spectacular',
-    
+    "rest_framework",
+    "rest_framework.authtoken",
+    "corsheaders",
+    "drf_spectacular",
     # Local apps
-    'assets',
-    'people',
-    'metadata',
-    'sharing',
-    'users',
+    "assets",
+    "people",
+    "metadata",
+    "sharing",
+    "users",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'openphotobox_backend.urls'
+ROOT_URLCONF = "openphotobox_backend.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates']
-        ,
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'openphotobox_backend.wsgi.application'
+WSGI_APPLICATION = "openphotobox_backend.wsgi.application"
 
 
 # Database
@@ -95,35 +93,35 @@ WSGI_APPLICATION = 'openphotobox_backend.wsgi.application'
 
 # Default (legacy) hardcoded PostgreSQL config retained for fallback when DATABASE_URL absent/invalid
 DEFAULT_DATABASE_CONFIG = {
-    'ENGINE': 'django.db.backends.postgresql',
-    'NAME': 'archive',
-    'USER': 'archive',
-    'PASSWORD': 'archive',
-    'HOST': 'localhost',  # Docker service name
-    'PORT': '5432',
-    'OPTIONS': {},
+    "ENGINE": "django.db.backends.postgresql",
+    "NAME": "archive",
+    "USER": "archive",
+    "PASSWORD": "archive",
+    "HOST": "localhost",  # Docker service name
+    "PORT": "5432",
+    "OPTIONS": {},
 }
 
-_database_url = os.environ.get('DATABASE_URL')
+_database_url = os.environ.get("DATABASE_URL")
 if _database_url and dj_database_url:
     try:
         # Parse DATABASE_URL; enable persistent connections (conn_max_age)
         parsed = dj_database_url.parse(_database_url, conn_max_age=600)
         # Merge OPTIONS if parser didn't provide them
-        if 'OPTIONS' not in parsed:
-            parsed['OPTIONS'] = {}
+        if "OPTIONS" not in parsed:
+            parsed["OPTIONS"] = {}
         # Optional: enforce SSL if requested via query (?ssl=true or sslmode=require)
         query_lower = _database_url.lower()
-        if ('sslmode=require' in query_lower) or ('ssl=true' in query_lower):
-            parsed['OPTIONS']['sslmode'] = 'require'
-        DATABASES = {'default': parsed}
+        if ("sslmode=require" in query_lower) or ("ssl=true" in query_lower):
+            parsed["OPTIONS"]["sslmode"] = "require"
+        DATABASES = {"default": parsed}
     except Exception as e:  # pragma: no cover
         warnings.warn(f"Invalid DATABASE_URL '{_database_url}': {e}. Falling back to default database settings.")
-        DATABASES = {'default': DEFAULT_DATABASE_CONFIG}
+        DATABASES = {"default": DEFAULT_DATABASE_CONFIG}
 else:
     if _database_url and not dj_database_url:  # pragma: no cover
         warnings.warn("dj-database-url not installed; ignoring DATABASE_URL and using default database settings.")
-    DATABASES = {'default': DEFAULT_DATABASE_CONFIG}
+    DATABASES = {"default": DEFAULT_DATABASE_CONFIG}
 
 
 # Password validation
@@ -131,16 +129,16 @@ else:
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -148,9 +146,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -160,12 +158,12 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Pillow safety: allow very large images (disable decompression bomb protection)
 # If you prefer a finite cap, set an integer (e.g., 4000_000_000) instead of None.
@@ -173,19 +171,19 @@ Image.MAX_IMAGE_PIXELS = None
 
 # Django REST Framework
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
     ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
     ],
-    'DEFAULT_PAGINATION_CLASS': 'openphotobox_backend.pagination.DefaultCursorPagination',
-    'PAGE_SIZE': 200,
-    'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
+    "DEFAULT_PAGINATION_CLASS": "openphotobox_backend.pagination.DefaultCursorPagination",
+    "PAGE_SIZE": 200,
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
     ],
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 # CORS settings for frontend
@@ -197,89 +195,87 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 # Backend URL for generating absolute URLs (used in API responses)
-BACKEND_URL = os.environ.get('BACKEND_URL', 'http://localhost:8000')
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 
 # Media files (for development)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 # Static files
 STATICFILES_DIRS = [
-    BASE_DIR / 'static',
+    BASE_DIR / "static",
 ]
 
 # Custom settings for OpenPhotobox
 OPENPHOTOBOX = {
-    'S3_BUCKET': 'openphotobox-assets',
-    'S3_ENDPOINT_URL': 'http://localhost:9000',  # MinIO for development
-    'THUMBNAIL_SIZES': [256, 1024],
+    "S3_BUCKET": "openphotobox-assets",
+    "S3_ENDPOINT_URL": "http://localhost:9000",  # MinIO for development
+    "THUMBNAIL_SIZES": [256, 1024],
     # Filter out low-confidence detections before creating Face records
-    'FACE_DETECTION_MIN_SCORE': 0.6,
+    "FACE_DETECTION_MIN_SCORE": 0.6,
     # Nearest-face assignment parameters
-    'FACE_ASSIGNMENT_MAX_PROTOTYPES_PER_PERSON': 5,
-    'FACE_SEARCH_MAX_DISTANCE': 0.46,  # cosine distance cutoff (slightly relaxed)
-    'FACE_SEARCH_MIN_FACES': 4,        # neighbors required to be core (more than 3)
+    "FACE_ASSIGNMENT_MAX_PROTOTYPES_PER_PERSON": 5,
+    "FACE_SEARCH_MAX_DISTANCE": 0.46,  # cosine distance cutoff (slightl/y relaxed)
+    "FACE_SEARCH_MIN_FACES": 4,  # neighbors required to be core (more than 3)
     # Allow KNN to create a new person when enough neighbors are present
-    'FACE_KNN_ALLOW_PERSON_CREATION': True,
-    'CLIP_MODEL': 'ViT-B/32',
+    "FACE_KNN_ALLOW_PERSON_CREATION": True,
+    "CLIP_MODEL": "ViT-B/32",
     # Default timezone to apply to naive capture dates (EXIF without TZ, scans, etc.)
-    'DEFAULT_CAPTURE_TZ': os.environ.get('DEFAULT_CAPTURE_TZ', 'America/New_York'),
+    "DEFAULT_CAPTURE_TZ": os.environ.get("DEFAULT_CAPTURE_TZ", "America/New_York"),
 }
 
 # DRF Spectacular (OpenAPI/Swagger) settings
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'OpenPhotobox API',
-    'DESCRIPTION': 'Family photo management system with face recognition, albums, and sharing',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
-    'SCHEMA_PATH_PREFIX': '/api/',
+    "TITLE": "OpenPhotobox API",
+    "DESCRIPTION": "Family photo management system with face recognition, albums, and sharing",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": "/api/",
 }
 
 # Console logging (enable debug/info for people.tasks in management commands and workers)
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {"format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
         },
     },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-    },
-    'loggers': {
+    "loggers": {
         # Root logger at INFO so most logs appear
-        '': {
-            'handlers': ['console'],
-            'level': 'INFO',
+        "": {
+            "handlers": ["console"],
+            "level": "INFO",
         },
         # People tasks at DEBUG for detailed assignment diagnostics
-        'people.tasks': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': False,
+        "people.tasks": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
         },
     },
 }
 
 # Celery Configuration
-CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'UTC'
+CELERY_BROKER_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "UTC"
 CELERY_ENABLE_UTC = True
 
 # Task routing
 CELERY_TASK_ROUTES = {
-    'metadata.tasks.process_asset_metadata': {'queue': 'metadata'},
-    'metadata.tasks.generate_clip_embedding': {'queue': 'ai'},
-    'people.tasks.detect_faces': {'queue': 'ai'},
-    'people.tasks.assign_faces_knn': {'queue': 'ai'},
+    "metadata.tasks.process_asset_metadata": {"queue": "metadata"},
+    "metadata.tasks.generate_clip_embedding": {"queue": "ai"},
+    "people.tasks.detect_faces": {"queue": "ai"},
+    "people.tasks.assign_faces_knn": {"queue": "ai"},
 }
 
 # Worker configuration

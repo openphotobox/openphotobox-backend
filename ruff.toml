@@ -1,0 +1,28 @@
+# Ruff configuration for OpenPhotobox backend
+# Docs: https://docs.astral.sh/ruff/configuration/
+
+# Target Python version (pyc files indicate 3.11+; choose 3.11 for broad support)
+target-version = "py311"
+line-length = 120
+indent-width = 4
+
+# Enable core rule sets: E (pycodestyle errors), F (pyflakes), I (import sorting)
+select = ["E", "F", "I"]
+# Ignore line-length complaints (we rely on formatter) and trailing whitespace in empty block sometimes
+extend-ignore = ["E501"]
+
+# Exclude generated / irrelevant paths
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "*/migrations/*",
+]
+
+# Import sorting settings
+[lint.isort]
+known-first-party = ["openphotobox_backend", "assets", "people", "metadata", "sharing", "users"]
+combine-as-imports = true
+force-single-line = false

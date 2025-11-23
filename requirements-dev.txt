@@ -1,0 +1,4 @@
+# Development / tooling dependencies (linting, typing, hooks)
+pre-commit==3.8.0
+mypy==1.11.2
+ruff==0.7.3
