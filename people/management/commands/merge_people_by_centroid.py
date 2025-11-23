@@ -1,20 +1,21 @@
+import numpy as np
 from django.core.management.base import BaseCommand
 from django.db import transaction
-import numpy as np
-from people.models import Person, Face
+
+from people.models import Face, Person
 from people.tasks import _calculate_centroid
 
 
 class Command(BaseCommand):
-    help = 'Merge people whose centroid similarity exceeds a threshold.'
+    help = "Merge people whose centroid similarity exceeds a threshold."
 
     def add_arguments(self, parser):
-        parser.add_argument('--threshold', type=float, default=0.75, help='Cosine similarity threshold')
-        parser.add_argument('--dry-run', action='store_true')
+        parser.add_argument("--threshold", type=float, default=0.75, help="Cosine similarity threshold")
+        parser.add_argument("--dry-run", action="store_true")
 
     def handle(self, *args, **options):
-        thr = options['threshold']
-        dry = options['dry_run']
+        thr = options["threshold"]
+        dry = options["dry_run"]
         people = list(Person.objects.exclude(embedding_centroid__isnull=True))
         merged = 0
         visited = set()
@@ -35,7 +36,7 @@ class Command(BaseCommand):
                 if p.id in visited:
                     continue
                 visited.add(p.id)
-                for q in people[i+1:]:
+                for q in people[i + 1 :]:
                     if q.id in visited:
                         continue
                     pa = to_array(p.embedding_centroid)
@@ -65,5 +66,3 @@ class Command(BaseCommand):
                         merged += 1
 
         self.stdout.write(self.style.SUCCESS(f"Completed. Merged {merged} pairs."))
-
-

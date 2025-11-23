@@ -1,15 +1,17 @@
 """
 URL patterns for the people app.
 """
-from django.urls import path, include
+
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
+
 from . import views
 
 router = DefaultRouter()
-router.register(r'', views.PersonViewSet, basename='person')
-router.register(r'faces', views.FaceViewSet)
-router.register(r'merge-suggestions', views.PersonMergeSuggestionViewSet)
+router.register(r"", views.PersonViewSet, basename="person")
+router.register(r"faces", views.FaceViewSet)
+router.register(r"merge-suggestions", views.PersonMergeSuggestionViewSet)
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path("", include(router.urls)),
 ]

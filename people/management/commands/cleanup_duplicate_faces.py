@@ -1,19 +1,19 @@
 from django.core.management.base import BaseCommand
-from django.db.models import Count
 from django.db import transaction
+
 from people.models import Face
 
 
 class Command(BaseCommand):
-    help = 'Find and remove duplicate Face records per asset with identical bbox and embedding size.'
+    help = "Find and remove duplicate Face records per asset with identical bbox and embedding size."
 
     def add_arguments(self, parser):
-        parser.add_argument('--dry-run', action='store_true', help='Only report duplicates')
-        parser.add_argument('--limit', type=int, default=10000, help='Process up to N faces (for safety)')
+        parser.add_argument("--dry-run", action="store_true", help="Only report duplicates")
+        parser.add_argument("--limit", type=int, default=10000, help="Process up to N faces (for safety)")
 
     def handle(self, *args, **options):
-        dry = options['dry_run']
-        limit = options['limit']
+        dry = options["dry_run"]
+        limit = options["limit"]
 
         # Heuristic: consider duplicates when same asset and very similar bbox (rounded to 3 decimals)
         def key_for(face):
@@ -25,7 +25,7 @@ class Command(BaseCommand):
                 round(face.h, 3),
             )
 
-        faces = list(Face.objects.all().order_by('-created_at')[:limit])
+        faces = list(Face.objects.all().order_by("-created_at")[:limit])
         seen = {}
         dupes = []
         for f in faces:
@@ -35,7 +35,7 @@ class Command(BaseCommand):
             else:
                 seen[k] = f.id
 
-        self.stdout.write(f'Found {len(dupes)} potential duplicate faces (within first {len(faces)}).')
+        self.stdout.write(f"Found {len(dupes)} potential duplicate faces (within first {len(faces)}).")
         if dry:
             return
         removed = 0
@@ -43,6 +43,4 @@ class Command(BaseCommand):
             for fid in dupes:
                 Face.objects.filter(id=fid).delete()
                 removed += 1
-        self.stdout.write(self.style.SUCCESS(f'Removed {removed} duplicates.'))
-
-
+        self.stdout.write(self.style.SUCCESS(f"Removed {removed} duplicates."))

@@ -1,21 +1,23 @@
 import logging
+from io import BytesIO
+from typing import Any, Dict, List, Optional
+
+import cv2
 import numpy as np
-from typing import Dict, Any, List, Optional
+import requests
 from celery import shared_task
 from django.conf import settings
-import requests
-from io import BytesIO
-import cv2
 from insightface.app import FaceAnalysis
 
-from .models import Person, Face
-from .models import FaceSearch
 from assets.models import Asset
+
+from .models import Face, FaceSearch, Person
 
 logger = logging.getLogger(__name__)
 
 # Global face analysis app (loaded once)
 _face_app = None
+
 
 def _l2_normalize(vector: np.ndarray) -> np.ndarray:
     """Return a unit-length copy of the vector (no-op if zero norm)."""
@@ -24,6 +26,7 @@ def _l2_normalize(vector: np.ndarray) -> np.ndarray:
         return (vector / norm).astype(np.float32)
     return vector.astype(np.float32)
 
+
 def get_face_app():
     """Get or create the InsightFace app instance."""
     global _face_app
@@ -31,8 +34,8 @@ def get_face_app():
         logger.info("Initializing InsightFace with buffalo_l model...")
         try:
             _face_app = FaceAnalysis(
-                name='buffalo_l',
-                providers=['CPUExecutionProvider']  # Use CPU for now, can be changed to GPU
+                name="buffalo_l",
+                providers=["CPUExecutionProvider"],  # Use CPU for now, can be changed to GPU
             )
             _face_app.prepare(ctx_id=-1, det_size=(320, 320))  # Use CPU (-1) and smaller size
             logger.info("InsightFace initialized successfully")
@@ -42,14 +45,12 @@ def get_face_app():
             raise
     return _face_app
 
+
 def create_fresh_face_app():
     """Create a fresh InsightFace app instance for each task."""
     logger.info("Creating fresh InsightFace instance...")
     try:
-        app = FaceAnalysis(
-            name='buffalo_l',
-            providers=['CPUExecutionProvider']
-        )
+        app = FaceAnalysis(name="buffalo_l", providers=["CPUExecutionProvider"])
         app.prepare(ctx_id=-1, det_size=(320, 320))  # Use CPU (-1) and smaller size
         logger.info("Fresh InsightFace instance created successfully")
         return app
@@ -72,7 +73,7 @@ def detect_faces(self, asset_id: str) -> Dict[str, Any]:
     try:
         asset = Asset.objects.get(id=asset_id)
         logger.info(f"Detecting faces in asset {asset_id}")
-        openphotobox_cfg = getattr(settings, 'OPENPHOTOBOX', {})
+        openphotobox_cfg = getattr(settings, "OPENPHOTOBOX", {})
         replace_existing = False
         skip_if_exists = False
         # Idempotency: optionally skip or replace to avoid duplicates when re-queued repeatedly
@@ -80,10 +81,10 @@ def detect_faces(self, asset_id: str) -> Dict[str, Any]:
         if existing_count > 0 and skip_if_exists and not replace_existing:
             logger.info(f"Skipping face detection for {asset_id}: {existing_count} faces already present")
             return {
-                'success': True,
-                'asset_id': asset_id,
-                'faces_detected': existing_count,
-                'message': 'Skipped because faces already exist'
+                "success": True,
+                "asset_id": asset_id,
+                "faces_detected": existing_count,
+                "message": "Skipped because faces already exist",
             }
         if existing_count > 0 and replace_existing:
             # Safer behavior: try to update in-place where possible, only delete if unmatched
@@ -106,18 +107,14 @@ def detect_faces(self, asset_id: str) -> Dict[str, Any]:
             app = create_fresh_face_app()
         except Exception as e:
             logger.error(f"Failed to create InsightFace app: {e}")
-            return {
-                'success': False,
-                'asset_id': asset_id,
-                'error': f'InsightFace initialization failed: {str(e)}'
-            }
+            return {"success": False, "asset_id": asset_id, "error": f"InsightFace initialization failed: {str(e)}"}
 
         # Detect faces
         faces = app.get(image)
         # Filter detections by detection score if configured
-        min_score = float(getattr(settings, 'OPENPHOTOBOX', {}).get('FACE_DETECTION_MIN_SCORE', 0.0))
+        min_score = float(getattr(settings, "OPENPHOTOBOX", {}).get("FACE_DETECTION_MIN_SCORE", 0.0))
         if min_score > 0:
-            faces = [f for f in faces if getattr(f, 'det_score', 1.0) >= min_score]
+            faces = [f for f in faces if getattr(f, "det_score", 1.0) >= min_score]
 
         # Create or update Face records
         created_faces = []
@@ -127,8 +124,8 @@ def detect_faces(self, asset_id: str) -> Dict[str, Any]:
 
         def iou(a, b):
             # a,b are dicts with x,y,w,h normalized
-            ax1, ay1, aw, ah = a['x'], a['y'], a['w'], a['h']
-            bx1, by1, bw, bh = b['x'], b['y'], b['w'], b['h']
+            ax1, ay1, aw, ah = a["x"], a["y"], a["w"], a["h"]
+            bx1, by1, bw, bh = b["x"], b["y"], b["w"], b["h"]
             ax2, ay2 = ax1 + aw, ay1 + ah
             bx2, by2 = bx1 + bw, by1 + bh
             inter_w = max(0.0, min(ax2, bx2) - max(ax1, bx1))
@@ -159,12 +156,12 @@ def detect_faces(self, asset_id: str) -> Dict[str, Any]:
             # Update-in-place if overlapping with an existing face (IoU >= 0.5)
             matched = None
             if existing_faces:
-                new_box = {'x': x, 'y': y, 'w': w, 'h': h}
+                new_box = {"x": x, "y": y, "w": w, "h": h}
                 best_iou = 0.0
                 for ef in existing_faces:
                     if ef.id in matched_existing_ids:
                         continue
-                    old_box = {'x': ef.x, 'y': ef.y, 'w': ef.w, 'h': ef.h}
+                    old_box = {"x": ef.x, "y": ef.y, "w": ef.w, "h": ef.h}
                     cur_iou = iou(new_box, old_box)
                     if cur_iou >= 0.5 and cur_iou > best_iou:
                         best_iou = cur_iou
@@ -178,7 +175,7 @@ def detect_faces(self, asset_id: str) -> Dict[str, Any]:
                 matched.h = h
                 matched.embedding = embedding.tobytes()
                 matched.quality = quality
-                matched.detection_model = 'buffalo_l'
+                matched.detection_model = "buffalo_l"
                 matched.detection_confidence = detection_confidence
                 matched.save()
                 matched_existing_ids.add(matched.id)
@@ -193,8 +190,8 @@ def detect_faces(self, asset_id: str) -> Dict[str, Any]:
                     h=h,
                     embedding=embedding.tobytes(),
                     quality=quality,
-                    detection_model='buffalo_l',
-                    detection_confidence=detection_confidence
+                    detection_model="buffalo_l",
+                    detection_confidence=detection_confidence,
                 )
                 created_faces.append(face_record)
 
@@ -203,8 +200,8 @@ def detect_faces(self, asset_id: str) -> Dict[str, Any]:
                 FaceSearch.objects.update_or_create(
                     face=face_record,
                     defaults={
-                        'embedding': _l2_normalize(embedding),
-                    }
+                        "embedding": _l2_normalize(embedding),
+                    },
                 )
             except Exception as e:
                 logger.warning(f"Failed to upsert FaceSearch for face {face_record.id}: {e}")
@@ -212,6 +209,7 @@ def detect_faces(self, asset_id: str) -> Dict[str, Any]:
             # Generate a face thumbnail asynchronously for quick UI display
             try:
                 from assets.tasks import generate_face_thumbnail  # Local import to avoid circular deps
+
                 generate_face_thumbnail.apply_async(args=[str(face_record.id)])
             except Exception as e:
                 logger.warning(f"Failed to enqueue face thumbnail generation for {face_record.id}: {e}")
@@ -229,35 +227,32 @@ def detect_faces(self, asset_id: str) -> Dict[str, Any]:
         if created_faces:
             try:
                 # Prefer KNN assignment; small delay to allow other faces to arrive
-                assign_delay_sec = int(openphotobox_cfg.get('FACE_ASSIGN_SCHEDULE_DELAY_SEC', 15))
+                assign_delay_sec = int(openphotobox_cfg.get("FACE_ASSIGN_SCHEDULE_DELAY_SEC", 15))
                 from .tasks import assign_faces_knn  # Local import
-                assign_faces_knn.apply_async(kwargs={'limit': 1000}, countdown=assign_delay_sec)
+
+                assign_faces_knn.apply_async(kwargs={"limit": 1000}, countdown=assign_delay_sec)
             except Exception as e:
                 logger.warning(f"Failed to enqueue KNN assignment: {e}")
 
         return {
-            'success': True,
-            'asset_id': asset_id,
-            'faces_detected': len(created_faces),
-            'face_ids': [str(f.id) for f in created_faces]
+            "success": True,
+            "asset_id": asset_id,
+            "faces_detected": len(created_faces),
+            "face_ids": [str(f.id) for f in created_faces],
         }
 
     except Asset.DoesNotExist:
         logger.error(f"Asset {asset_id} not found")
-        return {'success': False, 'error': 'Asset not found'}
+        return {"success": False, "error": "Asset not found"}
     except Exception as exc:
         logger.error(f"Error detecting faces in asset {asset_id}: {exc}")
 
         # Don't retry on segmentation faults or worker crashes
-        if any(keyword in str(exc) for keyword in ['SIGSEGV', 'WorkerLostError', 'segmentation fault']):
+        if any(keyword in str(exc) for keyword in ["SIGSEGV", "WorkerLostError", "segmentation fault"]):
             logger.error(f"Non-retryable error for asset {asset_id}: {exc}")
-            return {
-                'success': False,
-                'asset_id': asset_id,
-                'error': f'Non-retryable error: {str(exc)}'
-            }
+            return {"success": False, "asset_id": asset_id, "error": f"Non-retryable error: {str(exc)}"}
 
-        raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
+        raise self.retry(exc=exc, countdown=60 * (2**self.request.retries))
 
 
 def _download_asset_image(asset: Asset) -> Optional[BytesIO]:
@@ -277,7 +272,7 @@ def _calculate_centroid(faces: List[Face]) -> np.ndarray:
     embeddings = []
     for face in faces:
         # Exclude manual faces from centroid to avoid biasing recognition
-        if getattr(face, 'detection_model', '') == 'manual':
+        if getattr(face, "detection_model", "") == "manual":
             continue
         raw = np.frombuffer(face.embedding or b"", dtype=np.float32)
         if raw.size == 0:
@@ -301,18 +296,17 @@ def assign_faces_knn(self, limit: int = 500) -> Dict[str, Any]:
     via OPENPHOTOBOX.FACE_KNN_ALLOW_PERSON_CREATION=True.
     """
     try:
-        cfg = getattr(settings, 'OPENPHOTOBOX', {})
-        max_distance = float(cfg.get('FACE_SEARCH_MAX_DISTANCE', 0.5))
-        min_faces = int(cfg.get('FACE_SEARCH_MIN_FACES', 3))
-        allow_create = bool(cfg.get('FACE_KNN_ALLOW_PERSON_CREATION', False))
+        cfg = getattr(settings, "OPENPHOTOBOX", {})
+        max_distance = float(cfg.get("FACE_SEARCH_MAX_DISTANCE", 0.5))
+        min_faces = int(cfg.get("FACE_SEARCH_MIN_FACES", 3))
+        allow_create = bool(cfg.get("FACE_KNN_ALLOW_PERSON_CREATION", False))
 
         # Pull candidate faces with embeddings
         faces = (
-            Face.objects
-            .filter(person__isnull=True)
+            Face.objects.filter(person__isnull=True)
             .filter(face_search__isnull=False)
-            .select_related('asset')
-            .order_by('-quality', '-detection_confidence', '-created_at')[:limit]
+            .select_related("asset")
+            .order_by("-quality", "-detection_confidence", "-created_at")[:limit]
         )
         processed = 0
         assigned = 0
@@ -323,9 +317,10 @@ def assign_faces_knn(self, limit: int = 500) -> Dict[str, Any]:
             src = FaceSearch.objects.get(face=face)
             # KNN via raw SQL to leverage pgvector cosine distance
             from django.db import connection
+
             # Prepare embedding as a Python list of floats and as a vector literal string
             emb_list = np.asarray(src.embedding, dtype=np.float32).astype(float).tolist()
-            emb_str = '[' + ','.join(str(x) for x in emb_list) + ']'
+            emb_str = "[" + ",".join(str(x) for x in emb_list) + "]"
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
@@ -344,28 +339,33 @@ def assign_faces_knn(self, limit: int = 500) -> Dict[str, Any]:
 
             # Filter by distance cutoff
             neighbors = [
-                {'face_id': r[0], 'person_id': r[1], 'similarity': float(r[2]), 'distance': float(r[3])}
-                for r in rows if float(r[3]) <= max_distance
+                {"face_id": r[0], "person_id": r[1], "similarity": float(r[2]), "distance": float(r[3])}
+                for r in rows
+                if float(r[3]) <= max_distance
             ]
             if not neighbors:
                 continue
 
             # Assign to an existing person if any neighbor has one
-            neighbor_with_person = next((n for n in neighbors if n['person_id']), None)
+            neighbor_with_person = next((n for n in neighbors if n["person_id"]), None)
             if neighbor_with_person:
-                person = Person.objects.get(id=neighbor_with_person['person_id'])
+                person = Person.objects.get(id=neighbor_with_person["person_id"])
                 face.person = person
-                face.save(update_fields=['person', 'updated_at'])
+                face.save(update_fields=["person", "updated_at"])
                 # Update centroid for completeness
-                faces_qs = Face.objects.filter(person=person).only('embedding')
-                centroid = _calculate_centroid(list(faces_qs)) if faces_qs.exists() else _l2_normalize(np.frombuffer(face.embedding, dtype=np.float32))
+                faces_qs = Face.objects.filter(person=person).only("embedding")
+                centroid = (
+                    _calculate_centroid(list(faces_qs))
+                    if faces_qs.exists()
+                    else _l2_normalize(np.frombuffer(face.embedding, dtype=np.float32))
+                )
                 person.embedding_centroid = centroid
                 person.embedding_count = faces_qs.count()
                 if (not person.headshot_face) or (face.quality > person.headshot_face.quality):
                     person.headshot_face = face
-                person.save(update_fields=['embedding_centroid', 'embedding_count', 'headshot_face', 'updated_at'])
+                person.save(update_fields=["embedding_centroid", "embedding_count", "headshot_face", "updated_at"])
                 assigned += 1
-                display_name = (person.display_name or '').strip() or 'Unnamed'
+                display_name = (person.display_name or "").strip() or "Unnamed"
                 logger.info(
                     f"KNN assigned face {face.id} to existing person {display_name} ({person.id}) "
                     f"(distance={neighbor_with_person['distance']:.3f})"
@@ -380,11 +380,15 @@ def assign_faces_knn(self, limit: int = 500) -> Dict[str, Any]:
                     headshot_face=face,
                 )
                 face.person = person
-                face.save(update_fields=['person', 'updated_at'])
-                faces_qs = Face.objects.filter(person=person).only('embedding')
-                person.embedding_centroid = _calculate_centroid(list(faces_qs)) if faces_qs.exists() else _l2_normalize(np.frombuffer(face.embedding, dtype=np.float32))
+                face.save(update_fields=["person", "updated_at"])
+                faces_qs = Face.objects.filter(person=person).only("embedding")
+                person.embedding_centroid = (
+                    _calculate_centroid(list(faces_qs))
+                    if faces_qs.exists()
+                    else _l2_normalize(np.frombuffer(face.embedding, dtype=np.float32))
+                )
                 person.embedding_count = faces_qs.count()
-                person.save(update_fields=['embedding_centroid', 'embedding_count', 'updated_at'])
+                person.save(update_fields=["embedding_centroid", "embedding_count", "updated_at"])
                 created_people += 1
                 logger.info(f"KNN created new person {person.id} for face {face.id} (neighbors={len(neighbors)})")
             else:
@@ -393,8 +397,7 @@ def assign_faces_knn(self, limit: int = 500) -> Dict[str, Any]:
                     f"skipping person creation (allow_create={allow_create})."
                 )
 
-        return {'success': True, 'processed': processed, 'assigned': assigned, 'persons_created': created_people}
+        return {"success": True, "processed": processed, "assigned": assigned, "persons_created": created_people}
     except Exception as exc:
         logger.error(f"Error in assign_faces_knn: {exc}")
-        raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
-
+        raise self.retry(exc=exc, countdown=60 * (2**self.request.retries))

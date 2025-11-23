@@ -3,7 +3,10 @@ from django.db import transaction
 
 
 class Command(BaseCommand):
-    help = "Delete all library data (photos/assets, albums, faces, thumbnails, metadata). Optional flags to include sharing and people. Intended for wiping a test database."
+    help = (
+        "Delete all library data (photos/assets, albums, faces, thumbnails, metadata). Optional flags to "
+        "include sharing and people. Intended for wiping a test database."
+    )
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -33,40 +36,22 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        include_sharing = bool(options.get("include_sharing"))
         include_people = bool(options.get("include_people"))
         include_notifications = bool(options.get("include_notifications"))
         dry_run = bool(options.get("dry_run"))
         assume_yes = bool(options.get("yes"))
 
         # Imports here to avoid app loading if not needed elsewhere
-        from assets.models import Asset, Album, AlbumAsset, AssetThumbnail, FaceThumbnail, UploadBatch
-        from people.models import Face, FaceSearch, Person
-        from metadata.models import AssetMetadata, ClipEmbedding, XmpSidecar, AssetKeyword, KeywordTag
+        from assets.models import Album, AlbumAsset, Asset, AssetThumbnail, UploadBatch
+        from metadata.models import AssetKeyword, AssetMetadata, ClipEmbedding, KeywordTag, XmpSidecar
+        from people.models import Face, FaceSearch, FaceThumbnail, Person
 
         # Optional apps
         SharingModels = None
         NotificationsModel = None
-        if include_sharing:
-            try:
-                from sharing.models import (
-                    AccessGrant,
-                    UserAsset,
-                    SharingLink,
-                    UserAssetRebuildLog,
-                )  # type: ignore
-
-                SharingModels = {
-                    "AccessGrant": AccessGrant,
-                    "UserAsset": UserAsset,
-                    "SharingLink": SharingLink,
-                    "UserAssetRebuildLog": UserAssetRebuildLog,
-                }
-            except Exception:
-                SharingModels = {}
         if include_notifications:
             try:
-                from notifications.models import Notification  # type: ignore
+                from notifications.models import Notification
 
                 NotificationsModel = Notification
             except Exception:
@@ -148,8 +133,3 @@ class Command(BaseCommand):
                 self.stdout.write(f"Deleted {deleted} Notification")
 
         self.stdout.write(self.style.SUCCESS("Library wipe complete."))
-
-
-
-
-

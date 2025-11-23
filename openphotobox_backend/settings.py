@@ -11,9 +11,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
-from pathlib import Path
-from PIL import Image
 import warnings  # added for DATABASE_URL fallback warning
+from pathlib import Path
+
+from PIL import Image
 
 try:
     import dj_database_url  # added for DATABASE_URL parsing
@@ -53,7 +54,6 @@ INSTALLED_APPS = [
     "assets",
     "people",
     "metadata",
-    "sharing",
     "users",
 ]
 

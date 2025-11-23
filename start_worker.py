@@ -14,48 +14,63 @@ Notes:
   - Adjust concurrency based on CPU/GPU and DB/Redis capacity.
 """
 
+import argparse
 import os
 import sys
-import argparse
-import django
 from pathlib import Path
+
+import django
 
 # Add the backend directory to Python path
 backend_dir = Path(__file__).parent
 sys.path.insert(0, str(backend_dir))
 
 # Set up Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'openphotobox_backend.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "openphotobox_backend.settings")
 django.setup()
 
-# Import and start Celery
-from openphotobox_backend.celery import app
+# Import and start Celery (must occur after django.setup for settings-dependent initialization)
+from openphotobox_backend.celery import app  # noqa: E402
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Start a Celery worker')
-    parser.add_argument('--queues', default=os.environ.get('CELERY_QUEUES', 'metadata,ai,celery'), help='Comma-separated list of queues to consume')
-    parser.add_argument('--concurrency', type=int, default=int(os.environ.get('CELERY_CONCURRENCY', '4')), help='Number of concurrent worker threads/processes')
-    parser.add_argument('--pool', default=os.environ.get('CELERY_POOL', 'threads'), choices=['prefork', 'solo', 'threads', 'gevent', 'eventlet'], help='Worker pool implementation')
-    parser.add_argument('--loglevel', default=os.environ.get('CELERY_LOGLEVEL', 'info'), help='Logging level')
-    parser.add_argument('--preset', choices=['metadata', 'ai'], help='Apply a recommended preset for the worker')
+    parser = argparse.ArgumentParser(description="Start a Celery worker")
+    parser.add_argument(
+        "--queues",
+        default=os.environ.get("CELERY_QUEUES", "metadata,ai,celery"),
+        help="Comma-separated list of queues to consume",
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=int(os.environ.get("CELERY_CONCURRENCY", "4")),
+        help="Number of concurrent worker threads/processes",
+    )
+    parser.add_argument(
+        "--pool",
+        default=os.environ.get("CELERY_POOL", "threads"),
+        choices=["prefork", "solo", "threads", "gevent", "eventlet"],
+        help="Worker pool implementation",
+    )
+    parser.add_argument("--loglevel", default=os.environ.get("CELERY_LOGLEVEL", "info"), help="Logging level")
+    parser.add_argument("--preset", choices=["metadata", "ai"], help="Apply a recommended preset for the worker")
 
     args = parser.parse_args()
 
-    if args.preset == 'metadata':
+    if args.preset == "metadata":
         # CPU-light parsing, higher parallelism
-        args.queues = 'metadata'
-        if 'CELERY_CONCURRENCY' not in os.environ:
+        args.queues = "metadata"
+        if "CELERY_CONCURRENCY" not in os.environ:
             args.concurrency = 6
-        if 'CELERY_POOL' not in os.environ:
-            args.pool = 'threads'
-    elif args.preset == 'ai':
+        if "CELERY_POOL" not in os.environ:
+            args.pool = "threads"
+    elif args.preset == "ai":
         # InsightFace/CLIP work, keep modest parallelism
-        args.queues = 'ai'
-        if 'CELERY_CONCURRENCY' not in os.environ:
+        args.queues = "ai"
+        if "CELERY_CONCURRENCY" not in os.environ:
             args.concurrency = 2
-        if 'CELERY_POOL' not in os.environ:
-            args.pool = 'threads'
+        if "CELERY_POOL" not in os.environ:
+            args.pool = "threads"
 
     print("Starting Celery worker...")
     print(f"  Queues      : {args.queues}")
@@ -66,14 +81,16 @@ def main():
     print("Press Ctrl+C to stop the worker")
     print("-" * 50)
 
-    app.worker_main([
-        'worker',
-        f'--loglevel={args.loglevel}',
-        f'--queues={args.queues}',
-        f'--concurrency={args.concurrency}',
-        f'--pool={args.pool}',
-    ])
+    app.worker_main(
+        [
+            "worker",
+            f"--loglevel={args.loglevel}",
+            f"--queues={args.queues}",
+            f"--concurrency={args.concurrency}",
+            f"--pool={args.pool}",
+        ]
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

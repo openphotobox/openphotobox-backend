@@ -1,11 +1,9 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import permissions
-from django.db import connection
-from django.conf import settings
 import numpy as np
+from django.db import connection
+from rest_framework import permissions
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from .models import ClipEmbedding
 from .services import embed_text
 
 
@@ -15,74 +13,70 @@ class ClipSearchView(APIView):
     def get(self, request):
         """Search assets by CLIP text embedding; returns ranked asset IDs with similarity.
 
-        Query params: 
+        Query params:
           - q (text), limit (default 50)
           - people (comma-separated UUIDs) or person (single UUID)
           - people_mode: 'all' | 'any' (default 'all')
           - albums (comma-separated UUIDs) or album (single UUID)
         """
-        query = request.query_params.get('q', '')
+        query = request.query_params.get("q", "")
         if not query:
-            return Response({'results': []})
+            return Response({"results": []})
 
         try:
-            limit = int(request.query_params.get('limit', 50))
+            limit = int(request.query_params.get("limit", 50))
         except Exception:
             limit = 50
 
         text_emb = embed_text(query)
         emb_list = np.asarray(text_emb, dtype=np.float32).astype(float).tolist()
-        emb_str = '[' + ','.join(str(x) for x in emb_list) + ']'
+        emb_str = "[" + ",".join(str(x) for x in emb_list) + "]"
 
         # Optional filtering by people and albums
         allowed_asset_ids = None  # None means unrestricted
         try:
             # Build allowed set by people filters
-            people_param = request.query_params.get('people') or request.query_params.get('person_ids')
-            single_person = request.query_params.get('person')
-            people_mode = (request.query_params.get('people_mode') or 'all').lower()
+            people_param = request.query_params.get("people") or request.query_params.get("person_ids")
+            single_person = request.query_params.get("person")
+            people_mode = (request.query_params.get("people_mode") or "all").lower()
             people_ids = []
             if people_param:
-                people_ids = [p.strip() for p in people_param.split(',') if p and p.strip()]
+                people_ids = [p.strip() for p in people_param.split(",") if p and p.strip()]
             if single_person:
                 people_ids = [single_person]
 
             if people_ids:
                 from people.models import Face
-                if people_mode not in ('all', 'any'):
-                    people_mode = 'all'
-                if people_mode == 'all':
+
+                if people_mode not in ("all", "any"):
+                    people_mode = "all"
+                if people_mode == "all":
                     # Intersect assets that contain each specified person
                     intersect_ids = None
                     for pid in people_ids:
-                        ids_for_pid = set(
-                            Face.objects.filter(person_id=pid).values_list('asset_id', flat=True)
-                        )
+                        ids_for_pid = set(Face.objects.filter(person_id=pid).values_list("asset_id", flat=True))
                         intersect_ids = ids_for_pid if intersect_ids is None else (intersect_ids & ids_for_pid)
                         if not intersect_ids:
                             break
                     allowed_asset_ids = intersect_ids or set()
                 else:
                     allowed_asset_ids = set(
-                        Face.objects.filter(person_id__in=people_ids)
-                        .values_list('asset_id', flat=True)
-                        .distinct()
+                        Face.objects.filter(person_id__in=people_ids).values_list("asset_id", flat=True).distinct()
                     )
 
             # Apply album filters (any-of)
-            albums_param = request.query_params.get('albums') or request.query_params.get('album_ids')
-            single_album = request.query_params.get('album')
+            albums_param = request.query_params.get("albums") or request.query_params.get("album_ids")
+            single_album = request.query_params.get("album")
             album_ids = []
             if albums_param:
-                album_ids = [a.strip() for a in albums_param.split(',') if a and a.strip()]
+                album_ids = [a.strip() for a in albums_param.split(",") if a and a.strip()]
             if single_album:
                 album_ids = [single_album]
             if album_ids:
                 from assets.models import AlbumAsset
+
                 album_asset_ids = set(
-                    AlbumAsset.objects.filter(album_id__in=album_ids)
-                    .values_list('asset_id', flat=True)
-                    .distinct()
+                    AlbumAsset.objects.filter(album_id__in=album_ids).values_list("asset_id", flat=True).distinct()
                 )
                 if allowed_asset_ids is None:
                     allowed_asset_ids = album_asset_ids
@@ -126,12 +120,10 @@ class ClipSearchView(APIView):
             multiplier += 2
 
         results = [
-            {'asset_id': str(row[0]), 'similarity': float(row[1]), 'distance': float(row[2])}
+            {"asset_id": str(row[0]), "similarity": float(row[1]), "distance": float(row[2])}
             for row in rows_filtered[:limit]
         ]
-        return Response({'results': results})
-
-from django.shortcuts import render
+        return Response({"results": results})
 
 
 class ClipNeighborsView(APIView):
@@ -145,27 +137,28 @@ class ClipNeighborsView(APIView):
           - k (default 5): number of neighbors per asset
           - max_distance (optional): filter results to distances <= max_distance
         """
-        asset_id = request.query_params.get('asset_id')
+        asset_id = request.query_params.get("asset_id")
         if not asset_id:
-            return Response({'results': [], 'error': 'asset_id is required'})
+            return Response({"results": [], "error": "asset_id is required"})
         try:
-            k = int(request.query_params.get('k', 5))
+            k = int(request.query_params.get("k", 5))
         except Exception:
             k = 5
         try:
-            max_distance = float(request.query_params.get('max_distance')) if request.query_params.get('max_distance') is not None else None
+            max_distance = (
+                float(request.query_params.get("max_distance"))
+                if request.query_params.get("max_distance") is not None
+                else None
+            )
         except Exception:
             max_distance = None
 
         # Ensure the asset exists in clip_embeddings
         with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT 1 FROM clip_embeddings WHERE asset_id = %s LIMIT 1",
-                [asset_id]
-            )
+            cursor.execute("SELECT 1 FROM clip_embeddings WHERE asset_id = %s LIMIT 1", [asset_id])
             row = cursor.fetchone()
             if not row:
-                return Response({'results': []})
+                return Response({"results": []})
 
         # Use pgvector index to get nearest neighbors via lateral join
         with connection.cursor() as cursor:
@@ -185,7 +178,7 @@ class ClipNeighborsView(APIView):
                 WHERE ce.asset_id = %s
                 ORDER BY distance ASC
                 """,
-                [k, asset_id]
+                [k, asset_id],
             )
             rows = cursor.fetchall()
 
@@ -193,12 +186,15 @@ class ClipNeighborsView(APIView):
         for neighbor_asset_id, distance, similarity in rows:
             if max_distance is not None and float(distance) > max_distance:
                 continue
-            results.append({
-                'asset_id': str(neighbor_asset_id),
-                'distance': float(distance),
-                'similarity': float(similarity),
-            })
+            results.append(
+                {
+                    "asset_id": str(neighbor_asset_id),
+                    "distance": float(distance),
+                    "similarity": float(similarity),
+                }
+            )
 
-        return Response({'results': results})
+        return Response({"results": results})
+
 
 # Create your views here.

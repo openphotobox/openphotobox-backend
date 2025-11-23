@@ -8,125 +8,194 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('assets', '0001_initial'),
+        ("assets", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Face',
+            name="Face",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('x', models.FloatField()),
-                ('y', models.FloatField()),
-                ('w', models.FloatField()),
-                ('h', models.FloatField()),
-                ('embedding', models.BinaryField()),
-                ('quality', models.FloatField()),
-                ('detection_model', models.CharField(default='InsightFace', max_length=100)),
-                ('detection_confidence', models.FloatField(default=0.0)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('asset', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='faces', to='assets.asset')),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ("x", models.FloatField()),
+                ("y", models.FloatField()),
+                ("w", models.FloatField()),
+                ("h", models.FloatField()),
+                ("embedding", models.BinaryField()),
+                ("quality", models.FloatField()),
+                ("detection_model", models.CharField(default="InsightFace", max_length=100)),
+                ("detection_confidence", models.FloatField(default=0.0)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "asset",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="faces", to="assets.asset"
+                    ),
+                ),
             ],
             options={
-                'db_table': 'faces',
-                'ordering': ['-quality', '-detection_confidence'],
+                "db_table": "faces",
+                "ordering": ["-quality", "-detection_confidence"],
             },
         ),
         migrations.CreateModel(
-            name='Person',
+            name="Person",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('display_name', models.CharField(max_length=255)),
-                ('aka', models.JSONField(blank=True, default=list)),
-                ('notes', models.TextField(blank=True)),
-                ('embedding_centroid', pgvector.django.vector.VectorField(blank=True, dimensions=512, null=True)),
-                ('embedding_count', models.PositiveIntegerField(default=0)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('headshot_face', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='headshot_for_person', to='people.face')),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ("display_name", models.CharField(max_length=255)),
+                ("aka", models.JSONField(blank=True, default=list)),
+                ("notes", models.TextField(blank=True)),
+                ("embedding_centroid", pgvector.django.vector.VectorField(blank=True, dimensions=512, null=True)),
+                ("embedding_count", models.PositiveIntegerField(default=0)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "headshot_face",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="headshot_for_person",
+                        to="people.face",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'people',
-                'ordering': ['display_name'],
+                "db_table": "people",
+                "ordering": ["display_name"],
             },
         ),
         migrations.AddField(
-            model_name='face',
-            name='person',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='faces', to='people.person'),
+            model_name="face",
+            name="person",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="faces",
+                to="people.person",
+            ),
         ),
         migrations.CreateModel(
-            name='PersonMergeSuggestion',
+            name="PersonMergeSuggestion",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('cosine_similarity', models.FloatField()),
-                ('confidence_score', models.FloatField()),
-                ('status', models.CharField(choices=[('open', 'Open'), ('accepted', 'Accepted'), ('rejected', 'Rejected')], default='open', max_length=10)),
-                ('reviewed_at', models.DateTimeField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('person_a', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='merge_suggestions_a', to='people.person')),
-                ('person_b', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='merge_suggestions_b', to='people.person')),
-                ('reviewed_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL)),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ("cosine_similarity", models.FloatField()),
+                ("confidence_score", models.FloatField()),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[("open", "Open"), ("accepted", "Accepted"), ("rejected", "Rejected")],
+                        default="open",
+                        max_length=10,
+                    ),
+                ),
+                ("reviewed_at", models.DateTimeField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "person_a",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="merge_suggestions_a",
+                        to="people.person",
+                    ),
+                ),
+                (
+                    "person_b",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="merge_suggestions_b",
+                        to="people.person",
+                    ),
+                ),
+                (
+                    "reviewed_by",
+                    models.ForeignKey(
+                        blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL
+                    ),
+                ),
             ],
             options={
-                'db_table': 'person_merge_suggestions',
-                'ordering': ['-cosine_similarity', '-created_at'],
+                "db_table": "person_merge_suggestions",
+                "ordering": ["-cosine_similarity", "-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='FaceSearch',
+            name="FaceSearch",
             fields=[
-                ('face', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, primary_key=True, related_name='face_search', serialize=False, to='people.face')),
-                ('embedding', pgvector.django.vector.VectorField(dimensions=512)),
+                (
+                    "face",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        primary_key=True,
+                        related_name="face_search",
+                        serialize=False,
+                        to="people.face",
+                    ),
+                ),
+                ("embedding", pgvector.django.vector.VectorField(dimensions=512)),
             ],
             options={
-                'db_table': 'face_search',
-                'indexes': [models.Index(fields=['face'], name='face_search_face_id_0ad1be_idx')],
+                "db_table": "face_search",
+                "indexes": [models.Index(fields=["face"], name="face_search_face_id_0ad1be_idx")],
             },
         ),
         migrations.CreateModel(
-            name='FaceThumbnail',
+            name="FaceThumbnail",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('storage_key', models.CharField(max_length=1024)),
-                ('size', models.PositiveIntegerField(default=128)),
-                ('file_size', models.PositiveIntegerField()),
-                ('is_ready', models.BooleanField(default=False)),
-                ('generated_at', models.DateTimeField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('face', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='thumbnail', to='people.face')),
-                ('storage_bucket', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='face_thumbnails', to='assets.storagebucket')),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ("storage_key", models.CharField(max_length=1024)),
+                ("size", models.PositiveIntegerField(default=128)),
+                ("file_size", models.PositiveIntegerField()),
+                ("is_ready", models.BooleanField(default=False)),
+                ("generated_at", models.DateTimeField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "face",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="thumbnail", to="people.face"
+                    ),
+                ),
+                (
+                    "storage_bucket",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="face_thumbnails",
+                        to="assets.storagebucket",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'face_thumbnails',
-                'indexes': [models.Index(fields=['face'], name='face_thumbn_face_id_a25718_idx'), models.Index(fields=['is_ready'], name='face_thumbn_is_read_b10bf5_idx')],
+                "db_table": "face_thumbnails",
+                "indexes": [
+                    models.Index(fields=["face"], name="face_thumbn_face_id_a25718_idx"),
+                    models.Index(fields=["is_ready"], name="face_thumbn_is_read_b10bf5_idx"),
+                ],
             },
         ),
         migrations.AddIndex(
-            model_name='face',
-            index=models.Index(fields=['asset'], name='faces_asset_i_6d00f9_idx'),
+            model_name="face",
+            index=models.Index(fields=["asset"], name="faces_asset_i_6d00f9_idx"),
         ),
         migrations.AddIndex(
-            model_name='face',
-            index=models.Index(fields=['person'], name='faces_person__737f45_idx'),
+            model_name="face",
+            index=models.Index(fields=["person"], name="faces_person__737f45_idx"),
         ),
         migrations.AddIndex(
-            model_name='face',
-            index=models.Index(fields=['quality'], name='faces_quality_9a9117_idx'),
+            model_name="face",
+            index=models.Index(fields=["quality"], name="faces_quality_9a9117_idx"),
         ),
         migrations.AddIndex(
-            model_name='face',
-            index=models.Index(fields=['-detection_confidence'], name='faces_detecti_314930_idx'),
+            model_name="face",
+            index=models.Index(fields=["-detection_confidence"], name="faces_detecti_314930_idx"),
         ),
         migrations.AlterUniqueTogether(
-            name='personmergesuggestion',
-            unique_together={('person_a', 'person_b')},
+            name="personmergesuggestion",
+            unique_together={("person_a", "person_b")},
         ),
     ]

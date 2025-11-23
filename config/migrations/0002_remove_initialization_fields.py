@@ -4,18 +4,17 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('config', '0001_initial'),
+        ("config", "0001_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='serverconfiguration',
-            name='is_initialized',
+            model_name="serverconfiguration",
+            name="is_initialized",
         ),
         migrations.RemoveField(
-            model_name='serverconfiguration',
-            name='is_onboarded',
+            model_name="serverconfiguration",
+            name="is_onboarded",
         ),
     ]

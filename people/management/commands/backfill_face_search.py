@@ -1,22 +1,23 @@
+import numpy as np
 from django.core.management.base import BaseCommand
 from django.db import transaction
+
 from people.models import Face, FaceSearch
 from people.tasks import _l2_normalize
-import numpy as np
 
 
 class Command(BaseCommand):
-    help = 'Backfill the face_search table from existing faces.'
+    help = "Backfill the face_search table from existing faces."
 
     def add_arguments(self, parser):
-        parser.add_argument('--batch', type=int, default=1000, help='Batch size for processing.')
+        parser.add_argument("--batch", type=int, default=1000, help="Batch size for processing.")
 
     def handle(self, *args, **options):
-        batch = options['batch']
+        batch = options["batch"]
         total = 0
         created = 0
         updated = 0
-        qs = Face.objects.all().order_by('created_at').values_list('id', 'embedding')
+        qs = Face.objects.all().order_by("created_at").values_list("id", "embedding")
         batch_items = []
         for face_id, emb_bytes in qs.iterator(chunk_size=batch):
             batch_items.append((face_id, emb_bytes))
@@ -41,10 +42,7 @@ class Command(BaseCommand):
             for face_id, emb_bytes in batch_items:
                 emb = np.frombuffer(emb_bytes, dtype=np.float32)
                 emb = _l2_normalize(emb)
-                obj, is_created = FaceSearch.objects.update_or_create(
-                    face_id=face_id,
-                    defaults={'embedding': emb}
-                )
+                obj, is_created = FaceSearch.objects.update_or_create(face_id=face_id, defaults={"embedding": emb})
                 if is_created:
                     created += 1
                 else:
