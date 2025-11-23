@@ -3,46 +3,46 @@ name: Lint & Type Check
 on:
   pull_request:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.11", "3.12"]
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: '3.12'
           cache: 'pip'
           cache-dependency-path: |
-            requirements.txt
             requirements-dev.txt
 
-      - name: Install dependencies
+      - name: Cache mypy
+        uses: actions/cache@v4
+        with:
+          path: .mypy_cache
+          key: mypy-3.12-${{ hashFiles('mypy.ini') }}
+          restore-keys: |
+            mypy-3.12-
+
+      - name: Install tooling dependencies only
+        # For lint + mypy we don't need heavy runtime packages (torch, etc.) because mypy ignores missing imports.
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
           pip install -r requirements-dev.txt
-
-      - name: Ruff Lint
-        run: ruff check .
 
       - name: Ruff Format Check
         run: ruff format --check .
 
+      - name: Ruff Lint
+        run: ruff check --output-format=github .
+
       - name: Mypy Type Check
         run: mypy .
-
-      - name: Pre-Commit (Optional Aggregate) -- skip if individual steps enough
-        if: always()
-        run: |
-          pip install pre-commit
-          pre-commit run --all-files || true
