@@ -1,21 +1,39 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
-# Install system dependencies in a single layer
+# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies with CPU-only PyTorch
+# This dramatically reduces image size (from ~4GB to ~800MB for torch)
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir \
+    --index-url https://download.pytorch.org/whl/cpu \
+    torch==2.9.1 && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Runtime stage
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install only runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
     netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY requirements.txt .
-
-# Install Python dependencies with pip cache
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-cache-dir -r requirements.txt
+# Copy Python packages from builder
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy project files
 COPY . .
