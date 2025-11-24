@@ -34,7 +34,18 @@ SECRET_KEY = "django-insecure-#y&_h&*#njzu!$#jqp(ir1_u1)$kiv^^&4lj@&vmi=j+2yhh-=
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+# Build ALLOWED_HOSTS from environment variables
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+
+# Extract domain from BACKEND_URL if provided
+_backend_url = os.environ.get("BACKEND_URL", "")
+if _backend_url:
+    # Parse domain from URL (e.g., "https://api.photos.duskey.net" -> "api.photos.duskey.net")
+    from urllib.parse import urlparse
+
+    parsed = urlparse(_backend_url)
+    if parsed.hostname:
+        ALLOWED_HOSTS.append(parsed.hostname)
 
 
 # Application definition
@@ -186,16 +197,59 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
-# CORS settings for frontend
+# Backend URL for generating absolute URLs (used in API responses)
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
+
+# Frontend URL for CORS configuration
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+
+# Build CORS_ALLOWED_ORIGINS dynamically
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # Nuxt dev server
-    "http://127.0.0.1:3000",
+    "http://localhost:3000",  # Local dev
+    "http://127.0.0.1:3000",  # Local dev alternative
 ]
+
+# Add production frontend URL if different from localhost
+if FRONTEND_URL not in CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS.append(FRONTEND_URL)
 
 CORS_ALLOW_CREDENTIALS = True
 
-# Backend URL for generating absolute URLs (used in API responses)
-BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
+# Allow all standard methods including POST, PUT, PATCH, DELETE
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
+# Allow common headers that your frontend might send
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+
+# Build CSRF_TRUSTED_ORIGINS dynamically
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",  # Local dev
+    "http://127.0.0.1:3000",  # Local dev alternative
+]
+
+# Add production URLs if different from localhost
+if FRONTEND_URL not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(FRONTEND_URL)
+
+if BACKEND_URL not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(BACKEND_URL)
 
 # Media files (for development)
 MEDIA_URL = "/media/"
