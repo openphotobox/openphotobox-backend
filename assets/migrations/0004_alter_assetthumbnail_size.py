@@ -4,15 +4,17 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('assets', '0003_delete_uploadbatch'),
+        ("assets", "0003_delete_uploadbatch"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='assetthumbnail',
-            name='size',
-            field=models.CharField(choices=[('sm', 'Small (300px)'), ('md', 'Medium (600px)'), ('preview', 'Preview (2048px)')], max_length=10),
+            model_name="assetthumbnail",
+            name="size",
+            field=models.CharField(
+                choices=[("sm", "Small (300px)"), ("md", "Medium (600px)"), ("preview", "Preview (2048px)")],
+                max_length=10,
+            ),
         ),
     ]

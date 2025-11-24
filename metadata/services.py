@@ -2,7 +2,6 @@ import threading
 
 import numpy as np
 import torch  # Import torch first to avoid circular import issues
-import torchvision  # Import torchvision before open_clip
 
 _clip_lock = threading.Lock()
 _clip_model = None

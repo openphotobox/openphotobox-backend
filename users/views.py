@@ -161,15 +161,7 @@ def users_list_create_view(request):
             user = serializer.save()
             return Response(
                 {
-                    "user": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "integer"},
-                            "username": {"type": "string"},
-                            "email": {"type": "string"},
-                            "is_admin": {"type": "boolean"},
-                        },
-                    }(user).data,
+                    "user": UserSerializer(user).data,
                     "message": f'User "{user.username}" created successfully',
                 },
                 status=status.HTTP_201_CREATED,

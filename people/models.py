@@ -71,7 +71,9 @@ class Face(models.Model):
 
     # Confirmation tracking
     confirmed = models.BooleanField(default=False)
-    confirmed_by = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="confirmed_faces")
+    confirmed_by = models.ForeignKey(
+        "auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="confirmed_faces"
+    )
     confirmed_at = models.DateTimeField(null=True, blank=True)
 
     # Timestamps

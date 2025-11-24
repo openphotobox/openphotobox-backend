@@ -6,35 +6,40 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('assets', '0003_delete_uploadbatch'),
-        ('people', '0001_initial'),
+        ("assets", "0003_delete_uploadbatch"),
+        ("people", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='face',
-            name='confirmed',
+            model_name="face",
+            name="confirmed",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='face',
-            name='confirmed_at',
+            model_name="face",
+            name="confirmed_at",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='face',
-            name='confirmed_by',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='confirmed_faces', to=settings.AUTH_USER_MODEL),
+            model_name="face",
+            name="confirmed_by",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="confirmed_faces",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddIndex(
-            model_name='face',
-            index=models.Index(fields=['confirmed'], name='faces_confirm_36ae75_idx'),
+            model_name="face",
+            index=models.Index(fields=["confirmed"], name="faces_confirm_36ae75_idx"),
         ),
         migrations.AddIndex(
-            model_name='face',
-            index=models.Index(fields=['person', 'confirmed'], name='faces_person__8def1c_idx'),
+            model_name="face",
+            index=models.Index(fields=["person", "confirmed"], name="faces_person__8def1c_idx"),
         ),
     ]

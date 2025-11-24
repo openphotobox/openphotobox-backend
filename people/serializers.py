@@ -30,7 +30,15 @@ class PersonSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "face_count", "candidate_count", "asset_count", "headshot_url", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "face_count",
+            "candidate_count",
+            "asset_count",
+            "headshot_url",
+            "created_at",
+            "updated_at",
+        ]
 
     def get_face_count(self, obj):
         """Get the number of faces for this person."""

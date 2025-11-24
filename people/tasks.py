@@ -411,14 +411,14 @@ def assign_faces_knn(self, limit: int = 500) -> Dict[str, Any]:
 @shared_task(bind=True, max_retries=3)
 def revalidate_unconfirmed_faces(self, person_ids: Optional[List[str]] = None, limit: int = 1000) -> Dict[str, Any]:
     """Re-evaluate unconfirmed face assignments to see if better matches exist.
-    
+
     This task continuously improves face assignments as users confirm more faces.
     Only unconfirmed faces are re-evaluated; confirmed faces are never auto-changed.
-    
+
     Args:
         person_ids: Optional list of person UUIDs to limit scope (defaults to all)
         limit: Max number of faces to process per run (default 1000)
-    
+
     Returns:
         Dict with success status, processed count, and reassignment statistics
     """
@@ -426,38 +426,40 @@ def revalidate_unconfirmed_faces(self, person_ids: Optional[List[str]] = None, l
         cfg = getattr(settings, "OPENPHOTOBOX", {})
         max_distance = float(cfg.get("FACE_SEARCH_MAX_DISTANCE", 0.5))
         min_similarity_improvement = float(cfg.get("FACE_REVALIDATION_MIN_IMPROVEMENT", 0))
-        
+
         # Query unconfirmed faces (either assigned or unassigned)
-        faces_qs = Face.objects.filter(confirmed=False).filter(face_search__isnull=False).select_related("person", "asset")
-        
+        faces_qs = (
+            Face.objects.filter(confirmed=False).filter(face_search__isnull=False).select_related("person", "asset")
+        )
+
         # Optionally filter by person_ids
         if person_ids:
             faces_qs = faces_qs.filter(person_id__in=person_ids)
-        
+
         # Order by priority: assigned faces first (candidates), then by quality
         faces_qs = faces_qs.order_by("-person_id", "-quality", "-detection_confidence", "-created_at")[:limit]
-        
+
         processed = 0
         reassigned = 0
         unassigned = 0
-        
+
         for face in faces_qs:
             processed += 1
             current_person_id = face.person_id
-            
+
             # Get face embedding
             try:
                 src = FaceSearch.objects.get(face=face)
             except FaceSearch.DoesNotExist:
                 logger.warning(f"Face {face.id} missing FaceSearch record, skipping")
                 continue
-            
+
             # KNN to find best matches
             from django.db import connection
-            
+
             emb_list = np.asarray(src.embedding, dtype=np.float32).astype(float).tolist()
             emb_str = "[" + ",".join(str(x) for x in emb_list) + "]"
-            
+
             with connection.cursor() as cursor:
                 # Find nearest confirmed faces (as they are ground truth)
                 cursor.execute(
@@ -474,28 +476,28 @@ def revalidate_unconfirmed_faces(self, person_ids: Optional[List[str]] = None, l
                     [emb_str, emb_str, str(face.id)],
                 )
                 rows = cursor.fetchall()
-            
+
             if not rows:
                 continue
-            
+
             # Build person match scores: prefer confirmed faces, weight by similarity
             person_scores = {}
             for row in rows:
                 face_id, person_id, confirmed, similarity, distance = row
                 if distance > max_distance:
                     continue
-                
+
                 person_id_str = str(person_id)
                 # Weight confirmed faces more heavily
                 weight = 2.0 if confirmed else 1.0
                 weighted_sim = float(similarity) * weight
-                
+
                 if person_id_str not in person_scores:
                     person_scores[person_id_str] = {"max_sim": weighted_sim, "count": 0}
                 else:
                     person_scores[person_id_str]["max_sim"] = max(person_scores[person_id_str]["max_sim"], weighted_sim)
                 person_scores[person_id_str]["count"] += 1
-            
+
             if not person_scores:
                 # No good matches found; unassign if currently assigned
                 if current_person_id:
@@ -504,14 +506,14 @@ def revalidate_unconfirmed_faces(self, person_ids: Optional[List[str]] = None, l
                     unassigned += 1
                     logger.info(f"Revalidation unassigned face {face.id} (no good matches)")
                 continue
-            
+
             # Find best matching person
             best_person_id = max(person_scores.items(), key=lambda x: (x[1]["max_sim"], x[1]["count"]))[0]
             best_score = person_scores[best_person_id]["max_sim"]
-            
+
             # Decide whether to reassign
             should_reassign = False
-            
+
             if not current_person_id:
                 # Face is unassigned; assign to best match
                 should_reassign = True
@@ -520,7 +522,7 @@ def revalidate_unconfirmed_faces(self, person_ids: Optional[List[str]] = None, l
                 current_score = person_scores.get(str(current_person_id), {}).get("max_sim", 0.0)
                 if best_score > current_score + min_similarity_improvement:
                     should_reassign = True
-            
+
             if should_reassign and str(current_person_id) != best_person_id:
                 # Reassign to better match
                 try:
@@ -530,7 +532,7 @@ def revalidate_unconfirmed_faces(self, person_ids: Optional[List[str]] = None, l
                     # Keep as unconfirmed after reassignment
                     face.save(update_fields=["person", "updated_at"])
                     reassigned += 1
-                    
+
                     # Update centroids for both old and new persons
                     for pid in [old_person_id, new_person.id]:
                         if pid is None:
@@ -543,18 +545,22 @@ def revalidate_unconfirmed_faces(self, person_ids: Optional[List[str]] = None, l
                                 person.embedding_centroid = centroid
                                 person.embedding_count = faces_qs_for_person.count()
                                 # Get best face for headshot (without select_related to avoid defer conflict)
-                                best_face = Face.objects.filter(person=person).order_by(
-                                    "-quality", "-detection_confidence", "-created_at"
-                                ).first()
+                                best_face = (
+                                    Face.objects.filter(person=person)
+                                    .order_by("-quality", "-detection_confidence", "-created_at")
+                                    .first()
+                                )
                                 person.headshot_face = best_face
                             else:
                                 person.embedding_centroid = None
                                 person.embedding_count = 0
                                 person.headshot_face = None
-                            person.save(update_fields=["embedding_centroid", "embedding_count", "headshot_face", "updated_at"])
+                            person.save(
+                                update_fields=["embedding_centroid", "embedding_count", "headshot_face", "updated_at"]
+                            )
                         except Person.DoesNotExist:
                             continue
-                    
+
                     old_name = "None" if old_person_id is None else f"person {old_person_id}"
                     logger.info(
                         f"Revalidation reassigned face {face.id} from {old_name} to "
@@ -565,7 +571,7 @@ def revalidate_unconfirmed_faces(self, person_ids: Optional[List[str]] = None, l
                 except Person.DoesNotExist:
                     logger.warning(f"Target person {best_person_id} not found for face {face.id}")
                     continue
-        
+
         result = {
             "success": True,
             "processed": processed,
@@ -574,7 +580,7 @@ def revalidate_unconfirmed_faces(self, person_ids: Optional[List[str]] = None, l
         }
         logger.info(f"Revalidation complete: {result}")
         return result
-        
+
     except Exception as exc:
         logger.error(f"Error in revalidate_unconfirmed_faces: {exc}")
         raise self.retry(exc=exc, countdown=60 * (2**self.request.retries))

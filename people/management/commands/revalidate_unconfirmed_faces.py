@@ -16,9 +16,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--async", dest="async_", action="store_true", help="Queue via Celery instead of running inline."
         )
-        parser.add_argument(
-            "--sync", dest="async_", action="store_false", help="Run inline synchronously (default)."
-        )
+        parser.add_argument("--sync", dest="async_", action="store_false", help="Run inline synchronously (default).")
         parser.set_defaults(async_=False)
 
     def handle(self, *args, **options):
@@ -41,4 +39,3 @@ class Command(BaseCommand):
                 )
             else:
                 self.stdout.write(self.style.ERROR("Revalidation failed"))
-
