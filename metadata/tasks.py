@@ -5,7 +5,6 @@ from io import BytesIO
 from typing import Any, Dict, Optional
 
 import numpy as np
-import requests
 from celery import shared_task
 from django.conf import settings
 from PIL import ExifTags, Image
@@ -173,10 +172,14 @@ def generate_clip_embedding(self, asset_id: str) -> Dict[str, Any]:
         asset = Asset.objects.get(id=asset_id)
         logger.info(f"Generating CLIP embedding for asset {asset_id}")
 
-        # Download full image for CLIP (avoid Range header to ensure full content)
-        img_resp = requests.get(asset.storage_url, timeout=30)
-        img_resp.raise_for_status()
-        image_bytes = img_resp.content
+        # Read full image from local filesystem for CLIP
+        from assets.services import UploadService
+
+        upload_service = UploadService(asset.storage_bucket.backend)
+        file_path = upload_service.get_file_path(asset)
+
+        with open(file_path, "rb") as f:
+            image_bytes = f.read()
 
         # Compute real CLIP embedding (L2-normalized float32 length 512)
         start = time.time()
@@ -221,19 +224,20 @@ def generate_clip_embedding(self, asset_id: str) -> Dict[str, Any]:
 
 
 def _download_asset_image(asset: Asset) -> Optional[BytesIO]:
-    """Download asset image data for processing."""
+    """Read asset image data for processing from local filesystem."""
     try:
-        # Use the Django proxy URL to get the image
-        # Add headers to request only the first few KB for EXIF data
-        headers = {
-            "Range": "bytes=0-65536"  # First 64KB should contain all EXIF data
-        }
+        # For local storage, read directly from filesystem
+        from assets.services import UploadService
 
-        response = requests.get(asset.storage_url, headers=headers, timeout=10)
-        response.raise_for_status()
-        return BytesIO(response.content)
+        upload_service = UploadService(asset.storage_bucket.backend)
+        file_path = upload_service.get_file_path(asset)
+
+        # Read only the first 64KB for EXIF data (enough for metadata)
+        with open(file_path, "rb") as f:
+            data = f.read(65536)  # First 64KB
+            return BytesIO(data)
     except Exception as e:
-        logger.error(f"Failed to download image for asset {asset.id}: {e}")
+        logger.error(f"Failed to read image for asset {asset.id}: {e}")
         return None
 
 

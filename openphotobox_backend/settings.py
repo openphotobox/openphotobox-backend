@@ -208,14 +208,15 @@ STATICFILES_DIRS = [
 
 # Custom settings for OpenPhotobox
 OPENPHOTOBOX = {
-    "S3_BUCKET": "openphotobox-assets",
-    "S3_ENDPOINT_URL": "http://localhost:9000",  # MinIO for development
+    # Local storage path - where photos will be stored on the filesystem
+    "DEFAULT_STORAGE_PATH": os.environ.get("STORAGE_PATH", str(BASE_DIR / "storage")),
+    # Thumbnail sizes
     "THUMBNAIL_SIZES": [256, 1024],
     # Filter out low-confidence detections before creating Face records
     "FACE_DETECTION_MIN_SCORE": 0.6,
     # Nearest-face assignment parameters
     "FACE_ASSIGNMENT_MAX_PROTOTYPES_PER_PERSON": 5,
-    "FACE_SEARCH_MAX_DISTANCE": 0.46,  # cosine distance cutoff (slightl/y relaxed)
+    "FACE_SEARCH_MAX_DISTANCE": 0.46,  # cosine distance cutoff (slightly relaxed)
     "FACE_SEARCH_MIN_FACES": 4,  # neighbors required to be core (more than 3)
     # Allow KNN to create a new person when enough neighbors are present
     "FACE_KNN_ALLOW_PERSON_CREATION": True,

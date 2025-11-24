@@ -1,35 +1,30 @@
 import uuid
 
-from django.contrib.auth.models import User
-from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 
 class StorageBackend(models.Model):
     """
-    Storage backend configuration for different storage providers.
+    Storage backend configuration for local filesystem storage.
 
-    S3/MinIO are the first-class citizens and recommended for production use.
-    They provide efficient presigned URL uploads, scalability, and reliability.
-
-    LocalFS is provided but not recommended for production.
+    Users can configure multiple storage backends with different base paths,
+    allowing for organizing photos across different drives or locations.
     """
 
     BACKEND_TYPES = [
-        ("s3", "Amazon S3"),
-        ("minio", "MinIO"),
         ("local", "Local File System"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100, unique=True)
-    backend_type = models.CharField(max_length=10, choices=BACKEND_TYPES)
+    backend_type = models.CharField(max_length=10, choices=BACKEND_TYPES, default="local")
 
-    endpoint_url = models.URLField(blank=True)
-    region = models.CharField(max_length=50, blank=True)
-
-    # Configuration (can be extended for different backends)
-    config = models.JSONField(default=dict, blank=True)
+    # Configuration (must contain 'base_path' for local storage)
+    config = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Configuration dict. For local storage, must contain 'base_path' key with filesystem path.",
+    )
 
     # Status
     is_active = models.BooleanField(default=True)
@@ -45,6 +40,26 @@ class StorageBackend(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_backend_type_display()})"
+
+    def get_base_path(self):
+        """
+        Get the base filesystem path for this storage backend.
+
+        Returns:
+            Path: Base path for file storage
+
+        Raises:
+            ValidationError: If base_path is not configured
+        """
+        from pathlib import Path
+
+        from django.core.exceptions import ValidationError
+
+        base_path = self.config.get("base_path")
+        if not base_path:
+            raise ValidationError(f"Storage backend '{self.name}' has no base_path configured")
+
+        return Path(base_path)
 
 
 class StorageBucket(models.Model):
@@ -187,48 +202,6 @@ class AlbumAsset(models.Model):
         db_table = "album_assets"
         unique_together = ["album", "asset"]
         ordering = ["order", "created_at"]
-
-
-class UploadBatch(models.Model):
-    """
-    Tracks batches of uploads for processing.
-    """
-
-    STATUS_CHOICES = [
-        ("pending", "Pending"),
-        ("processing", "Processing"),
-        ("completed", "Completed"),
-        ("failed", "Failed"),
-    ]
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=255, blank=True)
-    description = models.TextField(blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
-
-    # Upload metadata
-    total_files = models.PositiveIntegerField(default=0)
-    processed_files = models.PositiveIntegerField(default=0)
-    failed_files = models.PositiveIntegerField(default=0)
-
-    # Default metadata for this batch
-    default_keywords = ArrayField(models.CharField(max_length=100), default=list, blank=True)
-    default_album = models.ForeignKey(Album, on_delete=models.SET_NULL, null=True, blank=True)
-
-    # Created by user
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
-
-    # Timestamps
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    completed_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        db_table = "upload_batches"
-        ordering = ["-created_at"]
-
-    def __str__(self):
-        return f"Upload batch {self.name or self.id}"
 
 
 class AssetThumbnail(models.Model):

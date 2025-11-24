@@ -2,7 +2,6 @@ import logging
 from io import BytesIO
 from typing import Any, Dict, Optional
 
-import requests
 from celery import shared_task
 from django.utils import timezone
 from PIL import Image, ImageOps
@@ -142,21 +141,20 @@ def generate_face_thumbnail(self, face_id: str) -> Dict[str, Any]:
 
 
 def _download_asset_image(asset: Asset) -> Optional[BytesIO]:
-    """Download asset image data for processing."""
+    """Read asset image data for processing from local filesystem."""
     try:
-        # Download the full image (not just the first 64KB like for metadata)
-        response = requests.get(asset.storage_url, stream=True)
-        response.raise_for_status()
+        # Read the full image from local filesystem
+        upload_service = UploadService(asset.storage_bucket.backend)
+        file_path = upload_service.get_file_path(asset)
 
-        image_data = BytesIO()
-        for chunk in response.iter_content(chunk_size=8192):
-            image_data.write(chunk)
+        with open(file_path, "rb") as f:
+            image_data = BytesIO(f.read())
 
         image_data.seek(0)
         return image_data
 
     except Exception as e:
-        logger.error(f"Failed to download asset image: {e}")
+        logger.error(f"Failed to read asset image: {e}")
         return None
 
 
@@ -199,29 +197,24 @@ def _generate_single_thumbnail(
         thumbnail_size = thumbnail_data.tell()
         thumbnail_data.seek(0)
 
-        # Upload to storage
+        # Write to local filesystem
         upload_service = UploadService(bucket.backend)
         try:
-            # Handle path prefix for thumbnails
-            full_key = file_key
-            if bucket.path_prefix:
-                full_key = f"{bucket.path_prefix}/{file_key}"
-            elif bucket.purpose == "originals":
-                # If we're using the originals bucket for thumbnails, add thumbnails/ prefix
-                full_key = f"thumbnails/{file_key}"
+            # Get base path and construct full file path
+            base_path = bucket.backend.get_base_path()
+            full_path = base_path / bucket.purpose / file_key
 
-            # Upload thumbnail to storage
-            upload_service.client.put_object(
-                Bucket=bucket.name,
-                Key=full_key,
-                Body=thumbnail_data.getvalue(),
-                ContentType="image/jpeg",
-                ContentLength=thumbnail_size,
-            )
-            logger.info(f"Uploaded thumbnail {full_key} to storage")
+            # Ensure directory exists
+            upload_service.ensure_storage_directory(full_path.parent)
+
+            # Write thumbnail to file
+            with open(full_path, "wb") as f:
+                f.write(thumbnail_data.getvalue())
+
+            logger.info(f"Saved thumbnail to {full_path}")
         except Exception as e:
-            logger.error(f"Failed to upload thumbnail to storage: {e}")
-            # Still create the database record even if upload fails
+            logger.error(f"Failed to save thumbnail to filesystem: {e}")
+            # Still create the database record even if save fails
 
         # Create or update thumbnail record
         thumbnail, created = AssetThumbnail.objects.update_or_create(
@@ -279,29 +272,29 @@ def _generate_face_crop(face, original_image: Image.Image, bucket: StorageBucket
         thumbnail_size = thumbnail_data.tell()
         thumbnail_data.seek(0)
 
-        # Upload to storage
+        # Write to local filesystem
         upload_service = UploadService(bucket.backend)
         try:
-            # Handle path prefix for face thumbnails
-            full_key = file_key
-            if bucket.path_prefix:
-                full_key = f"{bucket.path_prefix}/{file_key}"
-            elif bucket.purpose == "originals":
-                # If we're using the originals bucket for face thumbnails, add face-thumbnails/ prefix
-                full_key = f"face-thumbnails/{file_key}"
+            # Get base path and construct full file path
+            # Face thumbnails go in their own directory
+            base_path = bucket.backend.get_base_path()
+            if bucket.purpose == "thumbnails":
+                full_path = base_path / bucket.purpose / file_key
+            else:
+                # If using originals bucket, put in face-thumbnails subdirectory
+                full_path = base_path / "face-thumbnails" / file_key
 
-            # Upload face thumbnail to storage
-            upload_service.client.put_object(
-                Bucket=bucket.name,
-                Key=full_key,
-                Body=thumbnail_data.getvalue(),
-                ContentType="image/jpeg",
-                ContentLength=thumbnail_size,
-            )
-            logger.info(f"Uploaded face thumbnail {full_key} to storage")
+            # Ensure directory exists
+            upload_service.ensure_storage_directory(full_path.parent)
+
+            # Write face thumbnail to file
+            with open(full_path, "wb") as f:
+                f.write(thumbnail_data.getvalue())
+
+            logger.info(f"Saved face thumbnail to {full_path}")
         except Exception as e:
-            logger.error(f"Failed to upload face thumbnail to storage: {e}")
-            # Still create the database record even if upload fails
+            logger.error(f"Failed to save face thumbnail to filesystem: {e}")
+            # Still create the database record even if save fails
 
         # Create or update face thumbnail record
         face_thumbnail_obj, created = FaceThumbnail.objects.update_or_create(

@@ -42,7 +42,7 @@ class Command(BaseCommand):
         assume_yes = bool(options.get("yes"))
 
         # Imports here to avoid app loading if not needed elsewhere
-        from assets.models import Album, AlbumAsset, Asset, AssetThumbnail, UploadBatch
+        from assets.models import Album, AlbumAsset, Asset, AssetThumbnail
         from metadata.models import AssetKeyword, AssetMetadata, ClipEmbedding, KeywordTag, XmpSidecar
         from people.models import Face, FaceSearch, FaceThumbnail, Person
 
@@ -71,7 +71,6 @@ class Command(BaseCommand):
             "XmpSidecar": XmpSidecar.objects.count(),
             "AssetKeyword": AssetKeyword.objects.count(),
             "KeywordTag": KeywordTag.objects.count(),
-            "UploadBatch": UploadBatch.objects.count(),
         }
         if include_people:
             counts["Person"] = Person.objects.count()
@@ -117,10 +116,6 @@ class Command(BaseCommand):
             # Assets (CASCADEs to thumbnails, metadata, faces, clip, xmp, keywords, through rows)
             deleted, _ = Asset.objects.all().delete()
             self.stdout.write(f"Deleted {deleted} Asset")
-
-            # Upload batches (not strictly tied to assets via CASCADE for status tracking)
-            deleted, _ = UploadBatch.objects.all().delete()
-            self.stdout.write(f"Deleted {deleted} UploadBatch")
 
             # Optional: people (after faces are gone)
             if include_people:

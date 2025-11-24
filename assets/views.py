@@ -1,24 +1,23 @@
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
-from botocore.exceptions import ClientError
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from django.http import Http404, StreamingHttpResponse
+from django.http import FileResponse, Http404, StreamingHttpResponse
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from openphotobox_backend.pagination import AssetCursorPagination
 
-from .models import Album, AlbumAsset, Asset, StorageBackend, StorageBucket, UploadBatch
+from .models import Album, AlbumAsset, Asset, StorageBackend, StorageBucket
 from .serializers import (
     AlbumSerializer,
     AssetGallerySerializer,
     AssetSerializer,
     StorageBackendSerializer,
     StorageBucketSerializer,
-    UploadBatchSerializer,
 )
 from .services import UploadService, get_default_upload_bucket
 
@@ -218,28 +217,20 @@ class AssetViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"])
     def upload_file(self, request):
         """
-        Direct file upload for LocalFS storage backend.
-        Requires X-File-Key, X-Bucket-ID headers from get_upload_config.
+        Direct file upload to local filesystem storage.
 
         POST /api/assets/upload_file/
         Content-Type: multipart/form-data
-        X-File-Key: 2024/01/15/uuid.jpg
-        X-Bucket-ID: bucket-uuid
-        X-Upload-Batch-ID: batch-uuid-optional
 
-        Body: file=<binary data>
+        Body:
+            file: binary file data
+            bucket_id (optional): target bucket ID (defaults to originals bucket)
+            metadata (optional): JSON string with additional metadata
+
+        Returns:
+            Asset details including asset_id
         """
         try:
-            # Get required headers
-            file_key = request.headers.get("X-File-Key")
-            bucket_id = request.headers.get("X-Bucket-ID")
-            upload_batch_id = request.headers.get("X-Upload-Batch-ID") or None
-
-            if not file_key or not bucket_id:
-                return Response(
-                    {"error": "X-File-Key and X-Bucket-ID headers are required"}, status=status.HTTP_400_BAD_REQUEST
-                )
-
             # Get uploaded file
             if "file" not in request.FILES:
                 return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
@@ -247,143 +238,40 @@ class AssetViewSet(viewsets.ModelViewSet):
             uploaded_file = request.FILES["file"]
 
             # Get storage bucket
-            try:
-                bucket = StorageBucket.objects.get(id=bucket_id)
-            except StorageBucket.DoesNotExist:
-                return Response({"error": "Invalid bucket_id"}, status=status.HTTP_400_BAD_REQUEST)
+            bucket_id = request.data.get("bucket_id")
+            if bucket_id:
+                try:
+                    bucket = StorageBucket.objects.get(id=bucket_id)
+                except StorageBucket.DoesNotExist:
+                    return Response({"error": "Invalid bucket_id"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                # Default to originals bucket
+                bucket = get_default_upload_bucket("originals")
 
-            # Verify this is a LocalFS backend
-            if bucket.backend.backend_type != "local":
-                return Response(
-                    {"error": "Direct upload only supported for LocalFS backends"}, status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Initialize upload service for LocalFS
+            # Initialize upload service
             upload_service = UploadService(bucket.backend)
+
+            # Parse metadata if provided
+            metadata = {}
+            if "metadata" in request.data:
+                import json
+
+                try:
+                    metadata = json.loads(request.data["metadata"])
+                except json.JSONDecodeError:
+                    return Response({"error": "Invalid metadata JSON"}, status=status.HTTP_400_BAD_REQUEST)
 
             # Save file to local storage and create asset
-            asset = upload_service.handle_direct_upload(
-                file=uploaded_file, file_key=file_key, bucket_id=bucket_id, upload_batch_id=upload_batch_id
-            )
+            asset = upload_service.save_uploaded_file(file=uploaded_file, bucket=bucket, metadata=metadata)
 
-            return Response(
-                {
-                    "file_key": file_key,
-                    "bucket_id": bucket_id,
-                    "asset_id": str(asset.id),
-                    "message": "File uploaded successfully",
-                },
-                status=status.HTTP_201_CREATED,
-            )
-
-        except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({"error": f"Failed to upload file: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    @action(detail=False, methods=["post"])
-    def request_upload_url(self, request):
-        """
-        Generate a presigned URL for uploading a file directly to S3/MinIO.
-
-        POST /api/assets/request_upload_url/
-        {
-            "filename": "photo.jpg",
-            "content_type": "image/jpeg",
-            "upload_batch_id": "uuid-optional"
-        }
-        """
-        try:
-            filename = request.data.get("filename")
-            content_type = request.data.get("content_type")
-            upload_batch_id = request.data.get("upload_batch_id")
-
-            if not filename or not content_type:
-                return Response({"error": "filename and content_type are required"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Get default upload bucket
-            bucket = get_default_upload_bucket("originals")
-
-            # Initialize upload service
-            upload_service = UploadService(bucket.backend)
-
-            # Generate unique file key
-            file_key = upload_service.generate_upload_key(filename, upload_batch_id)
-
-            # Generate presigned URL
-            upload_data = upload_service.generate_presigned_upload_url(
-                bucket=bucket,
-                file_key=file_key,
-                content_type=content_type,
-                expires_in=3600,  # 1 hour
-            )
-
-            return Response(upload_data, status=status.HTTP_200_OK)
-
-        except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response(
-                {"error": f"Failed to generate upload URL: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-    @action(detail=False, methods=["post"])
-    def complete_upload(self, request):
-        """
-        Complete the upload process by creating an Asset record.
-        Call this after successfully uploading the file to S3/MinIO.
-
-        POST /api/assets/complete_upload/
-        {
-            "file_key": "2024/01/15/uuid.jpg",
-            "bucket_id": "bucket-uuid",
-            "upload_batch_id": "batch-uuid-optional",
-            "metadata": {
-                "width": 1920,
-                "height": 1080,
-                "taken_at": "2024-01-15T10:30:00Z",
-                "description": "Family photo"
-            }
-        }
-        """
-        try:
-            file_key = request.data.get("file_key")
-            bucket_id = request.data.get("bucket_id")
-            upload_batch_id = request.data.get("upload_batch_id")
-            metadata = request.data.get("metadata", {})
-
-            if not file_key or not bucket_id:
-                return Response({"error": "file_key and bucket_id are required"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Get storage bucket
-            try:
-                bucket = StorageBucket.objects.get(id=bucket_id)
-            except StorageBucket.DoesNotExist:
-                return Response({"error": "Invalid bucket_id"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Initialize upload service
-            upload_service = UploadService(bucket.backend)
-
-            # Complete upload and create asset
-            asset = upload_service.complete_upload(
-                file_key=file_key, bucket_id=bucket_id, upload_batch_id=upload_batch_id, metadata=metadata
-            )
-
-            # Return created asset
+            # Serialize and return asset details
             serializer = AssetSerializer(asset)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         except ValidationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response(
-                {"error": f"Failed to complete upload: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-    # Alias path that cannot collide with detail routes
-    @action(detail=False, methods=["post"], url_path="upload/complete")
-    def complete_upload_alias(self, request):
-        return self.complete_upload(request)
+            return Response({"error": f"Failed to upload file: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["post"])
     def bulk_update(self, request):
@@ -402,135 +290,51 @@ class AssetViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"], url_path="upload/config")
     def get_upload_config(self, request):
         """
-        Get upload configuration based on storage backend type.
-        Returns presigned URL for S3/MinIO or direct upload endpoint for LocalFS.
+        Get upload configuration for local storage.
 
-        POST /api/assets/get_upload_config/
+        POST /api/assets/upload/config/
         {
             "filename": "photo.jpg",
-            "content_type": "image/jpeg",
-            "file_size": 2048576,
-            "upload_batch_id": "uuid-optional",
-            "sha256": "optional sha"
+            "content_type": "image/jpeg"
         }
         """
         try:
             filename = request.data.get("filename")
-            content_type = request.data.get("content_type")
-            file_size = request.data.get("file_size")
-            upload_batch_id = request.data.get("upload_batch_id")
-            provided_sha256 = request.data.get("sha256")
 
-            # Validate required fields
-            missing_fields = []
             if not filename:
-                missing_fields.append("filename")
-            if not content_type:
-                missing_fields.append("content_type")
-            if not file_size:
-                missing_fields.append("file_size")
-
-            if missing_fields:
-                return Response(
-                    {
-                        "error": "Missing required fields",
-                        "details": f"The following fields are required: {', '.join(missing_fields)}",
-                        "required_fields": ["filename", "content_type", "file_size"],
-                        "optional_fields": ["upload_batch_id"],
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Validate file size
-            if not isinstance(file_size, (int, float)) or file_size <= 0:
-                return Response(
-                    {"error": "Invalid file size", "details": "file_size must be a positive number representing bytes"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Early duplicate check using provided sha256
-            if provided_sha256:
-                from .models import Asset
-
-                existing = Asset.objects.filter(sha256=provided_sha256).first()
-                if existing:
-                    return Response({"upload_method": "duplicate", "asset_id": str(existing.id)})
+                return Response({"error": "filename is required"}, status=status.HTTP_400_BAD_REQUEST)
 
             # Check if storage backend is configured
             try:
                 bucket = get_default_upload_bucket("originals")
-                backend = bucket.backend
             except ValidationError as e:
                 return Response(
                     {
                         "error": "Storage not configured",
                         "details": str(e),
-                        "action_required": "Please configure a storage backend before uploading files",
-                        "admin_url": "/admin/settings",
                     },
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
             # Generate unique file key
-            upload_service = UploadService(backend)
-            file_key = upload_service.generate_upload_key(filename, upload_batch_id)
+            upload_service = UploadService(bucket.backend)
+            file_key = upload_service.generate_upload_key(filename)
 
-            # Determine upload method based on backend type
-            if backend.backend_type in ["s3", "minio", "gcs", "azure"]:
-                upload_data = upload_service.generate_presigned_upload_url(
-                    bucket=bucket, file_key=file_key, content_type=content_type, expires_in=3600, sha256=provided_sha256
-                )
-                return Response(
-                    {
-                        "upload_method": "presigned_url",
-                        "upload_url": upload_data["upload_url"],
-                        "fields": upload_data.get("fields", {}),
-                        "file_key": file_key,
-                        "bucket_id": str(bucket.id),
-                        "expires_at": upload_data.get("expires_at"),
-                    }
-                )
-            elif backend.backend_type == "local":
-                return Response(
-                    {
-                        "upload_method": "direct_upload",
-                        "upload_endpoint": "/api/assets/upload_file/",
-                        "file_key": file_key,
-                        "bucket_id": str(bucket.id),
-                        "upload_headers": {
-                            "X-File-Key": file_key,
-                            "X-Bucket-ID": str(bucket.id),
-                            "X-Upload-Batch-ID": upload_batch_id or "",
-                        },
-                    }
-                )
-            else:
-                return Response(
-                    {"error": f"Unsupported backend type: {backend.backend_type}"}, status=status.HTTP_400_BAD_REQUEST
-                )
-        except ValidationError as e:
-            return Response(
-                {"error": "Configuration error", "details": str(e), "type": "validation_error"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        except Exception as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.error(f"Upload config failed: {str(e)}", exc_info=True)
             return Response(
                 {
-                    "error": "Upload configuration failed",
-                    "details": "An unexpected error occurred while setting up upload configuration",
-                    "type": "internal_error",
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "upload_method": "direct",
+                    "upload_endpoint": "/api/assets/upload_file/",
+                    "suggested_key": file_key,
+                    "bucket_id": str(bucket.id),
+                }
             )
 
-    # Back-compat: legacy path for old clients
-    @action(detail=False, methods=["post"], url_path="get_upload_config")
-    def get_upload_config_legacy(self, request):
-        return self.get_upload_config(request)
+        except ValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(
+                {"error": f"Upload configuration failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 def stream_events(request):
@@ -591,214 +395,140 @@ def stream_events(request):
     resp["X-Accel-Buffering"] = "no"  # for nginx
     return resp
 
-    @action(detail=False, methods=["get"])
-    def by_date(self, request):
-        """Return all assets for a specific date (YYYY-MM-DD) for a section.
-        Minimal fields for the gallery.
-        Query param: date=YYYY-MM-DD
-        """
-        date_str = request.query_params.get("date")
-        if not date_str:
-            return Response({"error": "date is required (YYYY-MM-DD)"}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            from datetime import datetime
 
-            day = datetime.fromisoformat(date_str).date()
+class StorageViewSet(viewsets.ViewSet):
+    """
+    Simplified storage configuration API.
+    Hides the complexity of backends and buckets from the frontend.
+    """
+
+    permission_classes = [permissions.IsAdminUser]
+
+    @action(detail=False, methods=["post"], url_path="setup")
+    def setup(self, request):
+        """
+        Simple storage setup - provide a path and we'll handle the rest.
+
+        POST /api/storage/setup/
+        {
+            "path": "/home/user/photos"
+        }
+
+        This will:
+        - Create a StorageBackend with the path
+        - Create originals and thumbnails buckets
+        - Set everything as default
+        - Create the directory structure
+        """
+        import os
+
+        path = request.data.get("path")
+        if not path:
+            return Response({"error": "path is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate path
+        path = str(Path(path).resolve())
+
+        # Check if storage is already configured with a different path
+        existing_backend = StorageBackend.objects.filter(name="Default Storage").first()
+        if existing_backend:
+            existing_path = str(existing_backend.get_base_path())
+            if existing_path != path:
+                # Check if any assets exist
+                asset_count = Asset.objects.filter(storage_bucket__backend=existing_backend).count()
+                if asset_count > 0:
+                    return Response(
+                        {
+                            "error": "Cannot change storage path",
+                            "details": f"Storage is already configured at '{existing_path}' with {asset_count} photos. "
+                            "Changing the path would make existing photos inaccessible.",
+                            "current_path": existing_path,
+                            "requested_path": path,
+                            "asset_count": asset_count,
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+        try:
+            # Create directory if it doesn't exist
+            os.makedirs(path, exist_ok=True)
+            os.makedirs(os.path.join(path, "originals"), exist_ok=True)
+            os.makedirs(os.path.join(path, "thumbnails"), exist_ok=True)
+        except OSError as e:
+            return Response({"error": f"Failed to create directory: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if path is writable
+        if not os.access(path, os.W_OK):
+            return Response({"error": f"Directory is not writable: {path}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Unset other defaults
+        StorageBackend.objects.filter(is_default=True).update(is_default=False)
+
+        # Create or update backend
+        backend, created = StorageBackend.objects.update_or_create(
+            name="Default Storage",
+            defaults={"backend_type": "local", "config": {"base_path": path}, "is_default": True, "is_active": True},
+        )
+
+        # Create buckets
+        originals_bucket, _ = StorageBucket.objects.update_or_create(
+            backend=backend,
+            purpose="originals",
+            defaults={"name": "originals", "display_name": "Original Photos", "is_active": True},
+        )
+
+        thumbnails_bucket, _ = StorageBucket.objects.update_or_create(
+            backend=backend,
+            purpose="thumbnails",
+            defaults={"name": "thumbnails", "display_name": "Thumbnails", "is_active": True},
+        )
+
+        return Response(
+            {"success": True, "path": path, "message": "Storage configured successfully"}, status=status.HTTP_200_OK
+        )
+
+    @action(detail=False, methods=["get"], url_path="status")
+    def status(self, request):
+        """
+        Simple storage status check.
+
+        GET /api/storage/status/
+
+        Returns:
+        {
+            "configured": true/false,
+            "path": "/path/to/storage" or null
+        }
+        """
+        try:
+            # Check if we have a default backend with buckets
+            backend = StorageBackend.objects.filter(is_default=True, is_active=True).first()
+
+            if not backend:
+                return Response({"configured": False, "path": None})
+
+            # Check if buckets exist
+            has_originals = StorageBucket.objects.filter(backend=backend, purpose="originals", is_active=True).exists()
+            has_thumbnails = StorageBucket.objects.filter(
+                backend=backend, purpose="thumbnails", is_active=True
+            ).exists()
+
+            if not (has_originals and has_thumbnails):
+                return Response({"configured": False, "path": None})
+
+            # Get the path
+            path = backend.get_base_path()
+
+            return Response({"configured": True, "path": str(path)})
+
         except Exception:
-            return Response({"error": "Invalid date format, expected YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST)
-
-        qs = self.get_queryset().filter(Q(taken_at__date=day) | (Q(taken_at__isnull=True) & Q(created_at__date=day)))
-        serializer = AssetGallerySerializer(qs, many=True)
-        return Response({"results": serializer.data})
-
-    @action(detail=False, methods=["post"])
-    def upload_file(self, request):
-        """
-        Direct file upload for LocalFS storage backend.
-        Requires X-File-Key, X-Bucket-ID headers from get_upload_config.
-
-        POST /api/assets/upload_file/
-        Content-Type: multipart/form-data
-        X-File-Key: 2024/01/15/uuid.jpg
-        X-Bucket-ID: bucket-uuid
-        X-Upload-Batch-ID: batch-uuid-optional
-
-        Body: file=<binary data>
-        """
-        try:
-            # Get required headers
-            file_key = request.headers.get("X-File-Key")
-            bucket_id = request.headers.get("X-Bucket-ID")
-            upload_batch_id = request.headers.get("X-Upload-Batch-ID") or None
-
-            if not file_key or not bucket_id:
-                return Response(
-                    {"error": "X-File-Key and X-Bucket-ID headers are required"}, status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Get uploaded file
-            if "file" not in request.FILES:
-                return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
-
-            uploaded_file = request.FILES["file"]
-
-            # Get storage bucket
-            try:
-                bucket = StorageBucket.objects.get(id=bucket_id)
-            except StorageBucket.DoesNotExist:
-                return Response({"error": "Invalid bucket_id"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Verify this is a LocalFS backend
-            if bucket.backend.backend_type != "local":
-                return Response(
-                    {"error": "Direct upload only supported for LocalFS backends"}, status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Initialize upload service for LocalFS
-            upload_service = UploadService(bucket.backend)
-
-            # Save file to local storage and create asset
-            asset = upload_service.handle_direct_upload(
-                file=uploaded_file, file_key=file_key, bucket_id=bucket_id, upload_batch_id=upload_batch_id
-            )
-
-            return Response(
-                {
-                    "file_key": file_key,
-                    "bucket_id": bucket_id,
-                    "asset_id": str(asset.id),
-                    "message": "File uploaded successfully",
-                },
-                status=status.HTTP_201_CREATED,
-            )
-
-        except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({"error": f"Failed to upload file: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    @action(detail=False, methods=["post"])
-    def request_upload_url(self, request):
-        """
-        Generate a presigned URL for uploading a file directly to S3/MinIO.
-
-        POST /api/assets/request_upload_url/
-        {
-            "filename": "photo.jpg",
-            "content_type": "image/jpeg",
-            "upload_batch_id": "uuid-optional"
-        }
-        """
-        try:
-            filename = request.data.get("filename")
-            content_type = request.data.get("content_type")
-            upload_batch_id = request.data.get("upload_batch_id")
-
-            if not filename or not content_type:
-                return Response({"error": "filename and content_type are required"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Get default upload bucket
-            bucket = get_default_upload_bucket("originals")
-
-            # Initialize upload service
-            upload_service = UploadService(bucket.backend)
-
-            # Generate unique file key
-            file_key = upload_service.generate_upload_key(filename, upload_batch_id)
-
-            # Generate presigned URL
-            upload_data = upload_service.generate_presigned_upload_url(
-                bucket=bucket,
-                file_key=file_key,
-                content_type=content_type,
-                expires_in=3600,  # 1 hour
-            )
-
-            return Response(upload_data, status=status.HTTP_200_OK)
-
-        except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response(
-                {"error": f"Failed to generate upload URL: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-    @action(detail=False, methods=["post"])
-    def complete_upload(self, request):
-        """
-        Complete the upload process by creating an Asset record.
-        Call this after successfully uploading the file to S3/MinIO.
-
-        POST /api/assets/complete_upload/
-        {
-            "file_key": "2024/01/15/uuid.jpg",
-            "bucket_id": "bucket-uuid",
-            "upload_batch_id": "batch-uuid-optional",
-            "metadata": {
-                "width": 1920,
-                "height": 1080,
-                "taken_at": "2024-01-15T10:30:00Z",
-                "description": "Family photo"
-            }
-        }
-        """
-        try:
-            file_key = request.data.get("file_key")
-            bucket_id = request.data.get("bucket_id")
-            upload_batch_id = request.data.get("upload_batch_id")
-            metadata = request.data.get("metadata", {})
-
-            if not file_key or not bucket_id:
-                return Response({"error": "file_key and bucket_id are required"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Get storage bucket
-            try:
-                bucket = StorageBucket.objects.get(id=bucket_id)
-            except StorageBucket.DoesNotExist:
-                return Response({"error": "Invalid bucket_id"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Initialize upload service
-            upload_service = UploadService(bucket.backend)
-
-            # Complete upload and create asset
-            asset = upload_service.complete_upload(
-                file_key=file_key, bucket_id=bucket_id, upload_batch_id=upload_batch_id, metadata=metadata
-            )
-
-            # Return created asset
-            serializer = AssetSerializer(asset)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response(
-                {"error": f"Failed to complete upload: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-    # Alias path that cannot collide with detail routes
-    @action(detail=False, methods=["post"], url_path="upload/complete")
-    def complete_upload_alias(self, request):
-        return self.complete_upload(request)
-
-    @action(detail=False, methods=["post"])
-    def bulk_update(self, request):
-        """Bulk update assets with new metadata"""
-        asset_ids = request.data.get("asset_ids", [])
-        update_data = request.data.get("update_data", {})
-
-        if not asset_ids:
-            return Response({"error": "asset_ids is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        assets = Asset.objects.filter(id__in=asset_ids)
-        updated_count = assets.update(**update_data)
-
-        return Response({"message": f"Updated {updated_count} assets", "updated_count": updated_count})
+            return Response({"configured": False, "path": None})
 
 
 class StorageBackendViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing storage backends.
+    ViewSet for managing storage backends (advanced usage).
+    Most users should use the simplified /api/storage/ endpoints instead.
     """
 
     queryset = StorageBackend.objects.all()
@@ -819,110 +549,6 @@ class StorageBackendViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(is_active=is_active.lower() == "true")
 
         return queryset.order_by("-is_default", "-is_active", "name")
-
-    @action(detail=False, methods=["get"])
-    def status(self, request):
-        """Check storage configuration status"""
-        from assets.services import get_default_upload_bucket
-
-        status_info = {
-            "configured": False,
-            "has_backends": False,
-            "has_default_backend": False,
-            "has_originals_bucket": False,
-            "default_backend": None,
-            "recommendations": [],
-        }
-
-        # Check if any backends exist
-        backends_count = StorageBackend.objects.count()
-        status_info["has_backends"] = backends_count > 0
-
-        if not status_info["has_backends"]:
-            status_info["recommendations"].append("Create a storage backend (S3 or MinIO recommended)")
-            return Response(status_info)
-
-        # Check for default backend
-        default_backend = StorageBackend.objects.filter(is_default=True, is_active=True).first()
-        status_info["has_default_backend"] = default_backend is not None
-
-        if default_backend:
-            status_info["default_backend"] = {
-                "id": str(default_backend.id),
-                "name": default_backend.name,
-                "backend_type": default_backend.backend_type,
-                "is_active": default_backend.is_active,
-            }
-        else:
-            status_info["recommendations"].append("Set a default storage backend")
-
-        # Check for originals bucket
-        try:
-            get_default_upload_bucket("originals")
-            status_info["has_originals_bucket"] = True
-        except ValidationError:
-            status_info["has_originals_bucket"] = False
-            status_info["recommendations"].append('Create an "originals" bucket for photo uploads')
-
-        # Overall status
-        status_info["configured"] = (
-            status_info["has_backends"] and status_info["has_default_backend"] and status_info["has_originals_bucket"]
-        )
-
-        if status_info["configured"]:
-            status_info["recommendations"].append("✅ Storage is properly configured!")
-
-        return Response(status_info)
-
-    @action(detail=False, methods=["post"])
-    def setup_minio(self, request):
-        """Quick setup for MinIO development environment"""
-        endpoint_url = request.data.get("endpoint_url", "http://localhost:9000")
-        access_key = request.data.get("access_key", "minio")
-        secret_key = request.data.get("secret_key", "minio123")
-
-        # Create MinIO backend
-        backend, backend_created = StorageBackend.objects.get_or_create(
-            name="default-minio",
-            defaults={
-                "backend_type": "minio",
-                "endpoint_url": endpoint_url,
-                "region": "us-east-1",
-                "is_default": True,
-                "is_active": True,
-                "config": {
-                    "aws_access_key_id": access_key,
-                    "aws_secret_access_key": secret_key,
-                    "signature_version": "s3v4",
-                },
-            },
-        )
-
-        if backend_created:
-            # Set as default and deactivate other defaults
-            StorageBackend.objects.filter(is_default=True).exclude(id=backend.id).update(is_default=False)
-
-        # Create originals bucket
-        from assets.models import StorageBucket
-
-        bucket, bucket_created = StorageBucket.objects.get_or_create(
-            backend=backend, name="openphotobox-originals", defaults={"purpose": "originals", "is_active": True}
-        )
-
-        return Response(
-            {
-                "backend_created": backend_created,
-                "bucket_created": bucket_created,
-                "backend": {
-                    "id": str(backend.id),
-                    "name": backend.name,
-                    "backend_type": backend.backend_type,
-                    "endpoint_url": backend.endpoint_url,
-                },
-                "bucket": {"id": str(bucket.id), "name": bucket.name, "purpose": bucket.purpose},
-            },
-            status=status.HTTP_201_CREATED,
-        )
 
 
 class StorageBucketViewSet(viewsets.ModelViewSet):
@@ -955,9 +581,6 @@ class StorageBucketViewSet(viewsets.ModelViewSet):
         return queryset.order_by("backend__name", "purpose", "display_name")
 
 
-# Person and Face ViewSets moved to people app
-
-
 class AlbumViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing photo albums.
@@ -988,60 +611,10 @@ class AlbumViewSet(viewsets.ModelViewSet):
         return Response({"message": f"Added {len(asset_ids)} photos to album", "album": AlbumSerializer(album).data})
 
 
-# ShareLink ViewSet moved to sharing app
-
-
-class UploadBatchViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for managing upload batches.
-
-    Upload batches help organize and track multiple related photo uploads.
-    """
-
-    queryset = UploadBatch.objects.all()
-    serializer_class = UploadBatchSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
-
-    def get_queryset(self):
-        return UploadBatch.objects.filter(created_by=self.request.user).order_by("-created_at")
-
-    @action(detail=False, methods=["post"])
-    def create_batch(self, request):
-        """
-        Create a new upload batch for organizing uploads.
-
-        POST /api/upload-batches/create_batch/
-        {
-            "name": "Family Vacation 2024",
-            "description": "Photos from our summer vacation"
-        }
-        """
-        try:
-            name = request.data.get("name")
-            description = request.data.get("description", "")
-
-            # Create upload service and batch
-            upload_service = UploadService()
-            batch = upload_service.create_upload_batch(user=request.user, name=name, description=description)
-
-            serializer = UploadBatchSerializer(batch)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response(
-                {"error": f"Failed to create upload batch: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
-# Image serving view
+# Image serving views for local storage
 def serve_image(request, bucket_id, path):
     """
-    Serve images from MinIO storage through Django for access control.
+    Serve images from local filesystem storage with access control.
 
     GET /images/<bucket_id>/<path>
     """
@@ -1050,49 +623,25 @@ def serve_image(request, bucket_id, path):
         bucket = StorageBucket.objects.get(id=bucket_id)
         backend = bucket.backend
 
-        # Only serve from S3/MinIO backends
-        if backend.backend_type not in ["s3", "minio"]:
+        # Get file path from local storage
+        base_path = backend.get_base_path()
+        file_path = base_path / bucket.purpose / path
+
+        if not file_path.exists():
             raise Http404("Image not found")
 
-        # Create S3/MinIO client
-        from .services import UploadService
+        # Serve file with FileResponse
+        response = FileResponse(open(file_path, "rb"))
+        response["Cache-Control"] = "public, max-age=3600"
 
-        upload_service = UploadService(backend)
-        client = upload_service.client
+        # Try to guess content type
+        import mimetypes
 
-        # Get the object from MinIO
-        try:
-            response = client.get_object(Bucket=bucket.name, Key=path)
+        content_type, _ = mimetypes.guess_type(str(file_path))
+        if content_type:
+            response["Content-Type"] = content_type
 
-            # Stream the response
-            def stream_content():
-                try:
-                    for chunk in response["Body"].iter_chunks(chunk_size=8192):
-                        yield chunk
-                except AttributeError:
-                    # Fallback for different boto3 versions
-                    while True:
-                        chunk = response["Body"].read(8192)
-                        if not chunk:
-                            break
-                        yield chunk
-
-            # Create streaming response
-            streaming_response = StreamingHttpResponse(
-                stream_content(), content_type=response.get("ContentType", "application/octet-stream")
-            )
-
-            # Add cache headers
-            streaming_response["Cache-Control"] = "public, max-age=3600"
-            streaming_response["Content-Length"] = str(response.get("ContentLength", 0))
-
-            return streaming_response
-
-        except ClientError as e:
-            if e.response["Error"]["Code"] == "NoSuchKey":
-                raise Http404("Image not found")
-            else:
-                raise Http404("Error accessing image")
+        return response
 
     except StorageBucket.DoesNotExist:
         raise Http404("Bucket not found")
@@ -1100,10 +649,9 @@ def serve_image(request, bucket_id, path):
         raise Http404("Error serving image")
 
 
-# Thumbnail serving view
 def serve_thumbnail(request, bucket_id, path):
     """
-    Serve thumbnails from MinIO storage through Django for access control.
+    Serve thumbnails from local filesystem storage with access control.
 
     GET /thumbnails/<bucket_id>/<path>
     """
@@ -1112,57 +660,19 @@ def serve_thumbnail(request, bucket_id, path):
         bucket = StorageBucket.objects.get(id=bucket_id)
         backend = bucket.backend
 
-        # Only serve from S3/MinIO backends
-        if backend.backend_type not in ["s3", "minio"]:
+        # Get file path from local storage
+        base_path = backend.get_base_path()
+        file_path = base_path / bucket.purpose / path
+
+        if not file_path.exists():
             raise Http404("Thumbnail not found")
 
-        # Create S3/MinIO client
-        from .services import UploadService
+        # Serve file with FileResponse
+        response = FileResponse(open(file_path, "rb"))
+        response["Cache-Control"] = "public, max-age=86400"  # 24 hours
+        response["Content-Type"] = "image/jpeg"
 
-        upload_service = UploadService(backend)
-        client = upload_service.client
-
-        # Get the object from MinIO
-        try:
-            # Handle path prefix for thumbnails
-            full_key = path
-            if bucket.path_prefix:
-                full_key = f"{bucket.path_prefix}/{path}"
-            elif bucket.purpose == "originals":
-                # If we're using the originals bucket for thumbnails, add thumbnails/ prefix
-                full_key = f"thumbnails/{path}"
-
-            response = client.get_object(Bucket=bucket.name, Key=full_key)
-
-            # Stream the response
-            def stream_content():
-                try:
-                    for chunk in response["Body"].iter_chunks(chunk_size=8192):
-                        yield chunk
-                except AttributeError:
-                    # Fallback for different boto3 versions
-                    while True:
-                        chunk = response["Body"].read(8192)
-                        if not chunk:
-                            break
-                        yield chunk
-
-            # Create streaming response
-            streaming_response = StreamingHttpResponse(
-                stream_content(), content_type=response.get("ContentType", "image/jpeg")
-            )
-
-            # Add cache headers (thumbnails can be cached longer)
-            streaming_response["Cache-Control"] = "public, max-age=86400"  # 24 hours
-            streaming_response["Content-Length"] = str(response.get("ContentLength", 0))
-
-            return streaming_response
-
-        except ClientError as e:
-            if e.response["Error"]["Code"] == "NoSuchKey":
-                raise Http404("Thumbnail not found")
-            else:
-                raise Http404("Error accessing thumbnail")
+        return response
 
     except StorageBucket.DoesNotExist:
         raise Http404("Bucket not found")
@@ -1170,10 +680,9 @@ def serve_thumbnail(request, bucket_id, path):
         raise Http404("Error serving thumbnail")
 
 
-# Face thumbnail serving view
 def serve_face_thumbnail(request, bucket_id, path):
     """
-    Serve face thumbnails from MinIO storage through Django for access control.
+    Serve face thumbnails from local filesystem storage with access control.
 
     GET /face-thumbnails/<bucket_id>/<path>
     """
@@ -1182,57 +691,24 @@ def serve_face_thumbnail(request, bucket_id, path):
         bucket = StorageBucket.objects.get(id=bucket_id)
         backend = bucket.backend
 
-        # Only serve from S3/MinIO backends
-        if backend.backend_type not in ["s3", "minio"]:
+        # Get file path from local storage
+        base_path = backend.get_base_path()
+
+        # Face thumbnails might be in originals bucket with face-thumbnails prefix
+        if bucket.purpose == "originals":
+            file_path = base_path / "face-thumbnails" / path
+        else:
+            file_path = base_path / bucket.purpose / path
+
+        if not file_path.exists():
             raise Http404("Face thumbnail not found")
 
-        # Create S3/MinIO client
-        from .services import UploadService
+        # Serve file with FileResponse
+        response = FileResponse(open(file_path, "rb"))
+        response["Cache-Control"] = "public, max-age=86400"  # 24 hours
+        response["Content-Type"] = "image/jpeg"
 
-        upload_service = UploadService(backend)
-        client = upload_service.client
-
-        # Get the object from MinIO
-        try:
-            # Handle path prefix for face thumbnails
-            full_key = path
-            if bucket.path_prefix:
-                full_key = f"{bucket.path_prefix}/{path}"
-            elif bucket.purpose == "originals":
-                # If we're using the originals bucket for face thumbnails, add face-thumbnails/ prefix
-                full_key = f"face-thumbnails/{path}"
-
-            response = client.get_object(Bucket=bucket.name, Key=full_key)
-
-            # Stream the response
-            def stream_content():
-                try:
-                    for chunk in response["Body"].iter_chunks(chunk_size=8192):
-                        yield chunk
-                except AttributeError:
-                    # Fallback for different boto3 versions
-                    while True:
-                        chunk = response["Body"].read(8192)
-                        if not chunk:
-                            break
-                        yield chunk
-
-            # Create streaming response
-            streaming_response = StreamingHttpResponse(
-                stream_content(), content_type=response.get("ContentType", "image/jpeg")
-            )
-
-            # Add cache headers (face thumbnails can be cached longer)
-            streaming_response["Cache-Control"] = "public, max-age=86400"  # 24 hours
-            streaming_response["Content-Length"] = str(response.get("ContentLength", 0))
-
-            return streaming_response
-
-        except ClientError as e:
-            if e.response["Error"]["Code"] == "NoSuchKey":
-                raise Http404("Face thumbnail not found")
-            else:
-                raise Http404("Error accessing face thumbnail")
+        return response
 
     except StorageBucket.DoesNotExist:
         raise Http404("Bucket not found")

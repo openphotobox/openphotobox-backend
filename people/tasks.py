@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional
 
 import cv2
 import numpy as np
-import requests
 from celery import shared_task
 from django.conf import settings
 from insightface.app import FaceAnalysis
@@ -256,14 +255,18 @@ def detect_faces(self, asset_id: str) -> Dict[str, Any]:
 
 
 def _download_asset_image(asset: Asset) -> Optional[BytesIO]:
-    """Download asset image data for processing."""
+    """Read asset image data for processing from local filesystem."""
     try:
-        # Use the Django proxy URL to get the image
-        response = requests.get(asset.storage_url, timeout=30)
-        response.raise_for_status()
-        return BytesIO(response.content)
+        # Read from local filesystem
+        from assets.services import UploadService
+
+        upload_service = UploadService(asset.storage_bucket.backend)
+        file_path = upload_service.get_file_path(asset)
+
+        with open(file_path, "rb") as f:
+            return BytesIO(f.read())
     except Exception as e:
-        logger.error(f"Failed to download image for asset {asset.id}: {e}")
+        logger.error(f"Failed to read image for asset {asset.id}: {e}")
         return None
 
 

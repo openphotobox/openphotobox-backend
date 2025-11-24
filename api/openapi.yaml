@@ -4,510 +4,33 @@ info:
   version: 1.0.0
   description: Family photo management system with face recognition, albums, and sharing
 paths:
-  /setup/check/:
-    get:
-      operationId: setup_check_retrieve
-      description: Check if the system needs initial setup (no users exist)
-      summary: Check if setup is needed
-      tags:
-      - Setup
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  needs_setup:
-                    type: boolean
-                  user_count:
-                    type: integer
-                  message:
-                    type: string
-          description: ''
-  /setup/create-admin/:
-    post:
-      operationId: setup_create_admin_create
-      description: Create the first admin user for the system. This endpoint is disabled
-        after the first user is created.
-      summary: Initial system setup
-      tags:
-      - Setup
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SetupRequest'
-            examples:
-              SetupRequest:
-                value:
-                  username: admin
-                  email: admin@example.com
-                  password: securepassword
-                  confirm_password: securepassword
-                summary: Setup Request
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/SetupRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/SetupRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      - {}
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  token:
-                    type: string
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      username:
-                        type: string
-                      email:
-                        type: string
-                      is_admin:
-                        type: boolean
-                  message:
-                    type: string
-              examples:
-                SetupRequest:
-                  value:
-                    username: admin
-                    email: admin@example.com
-                    password: securepassword
-                    confirm_password: securepassword
-                  summary: Setup Request
-          description: ''
-        '400':
-          content:
-            application/json:
-              schema:
-                description: Setup not needed or validation errors
-          description: ''
-        '403':
-          content:
-            application/json:
-              schema:
-                description: Setup has already been completed
-          description: ''
-  /auth/login/:
-    post:
-      operationId: auth_login_create
-      description: Authenticate user and return auth token
-      summary: User login
-      tags:
-      - Authentication
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
-            examples:
-              LoginRequest:
-                value:
-                  username: admin
-                  password: securepassword
-                summary: Login Request
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  token:
-                    type: string
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      username:
-                        type: string
-                      email:
-                        type: string
-                      is_admin:
-                        type: boolean
-                  message:
-                    type: string
-              examples:
-                LoginRequest:
-                  value:
-                    username: admin
-                    password: securepassword
-                  summary: Login Request
-          description: ''
-        '400':
-          content:
-            application/json:
-              schema:
-                description: Invalid credentials
-          description: ''
-  /auth/logout/:
-    post:
-      operationId: auth_logout_create
-      description: Logout user and invalidate auth token
-      summary: User logout
-      tags:
-      - Authentication
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-          description: ''
-  /auth/me/:
-    get:
-      operationId: auth_me_retrieve
-      description: Get current user's profile information
-      summary: Get user profile
-      tags:
-      - Authentication
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      username:
-                        type: string
-                      email:
-                        type: string
-                      is_admin:
-                        type: boolean
-          description: ''
-  /auth/me/update/:
-    patch:
-      operationId: auth_me_update_partial_update
-      description: Update current user's profile information
-      summary: Update user profile
-      tags:
-      - Authentication
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedUserRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedUserRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedUserRequest'
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      username:
-                        type: string
-                      email:
-                        type: string
-                      is_admin:
-                        type: boolean
-                  message:
-                    type: string
-          description: ''
-    put:
-      operationId: auth_me_update_update
-      description: Update current user's profile information
-      summary: Update user profile
-      tags:
-      - Authentication
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/UserRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/UserRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      username:
-                        type: string
-                      email:
-                        type: string
-                      is_admin:
-                        type: boolean
-                  message:
-                    type: string
-          description: ''
-  /auth/change-password/:
-    post:
-      operationId: auth_change_password_create
-      description: Change current user's password
-      summary: Change password
-      tags:
-      - Authentication
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ChangePasswordRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ChangePasswordRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ChangePasswordRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-          description: ''
-  /admin/users/:
-    post:
-      operationId: admin_users_create
-      description: Create a new user account. Only administrators can create new users
-        after initial setup is complete.
-      summary: Create new user (Admin only)
-      tags:
-      - User Management
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RegisterRequest'
-            examples:
-              CreateUserRequest:
-                value:
-                  username: newuser
-                  email: newuser@example.com
-                  password: securepassword
-                  confirm_password: securepassword
-                  first_name: John
-                  last_name: Doe
-                summary: Create User Request
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/RegisterRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/RegisterRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      username:
-                        type: string
-                      email:
-                        type: string
-                      is_admin:
-                        type: boolean
-                  message:
-                    type: string
-              examples:
-                CreateUserRequest:
-                  value:
-                    username: newuser
-                    email: newuser@example.com
-                    password: securepassword
-                    confirm_password: securepassword
-                    first_name: John
-                    last_name: Doe
-                  summary: Create User Request
-          description: ''
-        '403':
-          content:
-            application/json:
-              schema:
-                description: Permission denied - admin access required
-          description: ''
+  /api/admin/users/:
     get:
       operationId: admin_users_retrieve
-      description: Get a list of all users in the system. Only administrators can
-        access this endpoint.
-      summary: List all users (Admin only)
+      description: List users (GET) or create new user (POST) - admin only
       tags:
-      - User Management
+      - admin
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  users:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                        username:
-                          type: string
-                        email:
-                          type: string
-                        is_admin:
-                          type: boolean
-                  count:
-                    type: integer
-          description: ''
-        '403':
-          content:
-            application/json:
-              schema:
-                description: Permission denied - admin access required
-          description: ''
-  /admin/users/{user_id}/:
-    patch:
-      operationId: admin_users_partial_update
-      description: Update a user's information. Only administrators can update other
-        users.
-      summary: Update user (Admin only)
-      parameters:
-      - in: path
-        name: user_id
-        schema:
-          type: integer
-        required: true
+          description: No response body
+    post:
+      operationId: admin_users_create
+      description: List users (GET) or create new user (POST) - admin only
       tags:
-      - User Management
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedUserRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedUserRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedUserRequest'
+      - admin
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      username:
-                        type: string
-                      email:
-                        type: string
-                      is_admin:
-                        type: boolean
-                  message:
-                    type: string
-          description: ''
-        '403':
-          content:
-            application/json:
-              schema:
-                description: Permission denied - admin access required
-          description: ''
-        '404':
-          content:
-            application/json:
-              schema:
-                description: User not found
-          description: ''
+          description: No response body
+  /api/admin/users/{user_id}/:
     put:
       operationId: admin_users_update
-      description: Update a user's information. Only administrators can update other
-        users.
-      summary: Update user (Admin only)
+      description: Update user (admin only)
       parameters:
       - in: path
         name: user_id
@@ -515,61 +38,34 @@ paths:
           type: integer
         required: true
       tags:
-      - User Management
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/UserRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/UserRequest'
-        required: true
+      - admin
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      username:
-                        type: string
-                      email:
-                        type: string
-                      is_admin:
-                        type: boolean
-                  message:
-                    type: string
-          description: ''
-        '403':
-          content:
-            application/json:
-              schema:
-                description: Permission denied - admin access required
-          description: ''
-        '404':
-          content:
-            application/json:
-              schema:
-                description: User not found
-          description: ''
-  /admin/users/{user_id}/delete/:
+          description: No response body
+    patch:
+      operationId: admin_users_partial_update
+      description: Update user (admin only)
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - admin
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/admin/users/{user_id}/delete/:
     delete:
       operationId: admin_users_delete_destroy
-      description: Delete a user account. Only administrators can delete users. Cannot
-        delete yourself.
-      summary: Delete user (Admin only)
+      description: Delete user (admin only)
       parameters:
       - in: path
         name: user_id
@@ -577,75 +73,19 @@ paths:
           type: integer
         required: true
       tags:
-      - User Management
+      - admin
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-          description: ''
-        '400':
-          content:
-            application/json:
-              schema:
-                description: Cannot delete yourself
-          description: ''
-        '403':
-          content:
-            application/json:
-              schema:
-                description: Permission denied - admin access required
-          description: ''
-        '404':
-          content:
-            application/json:
-              schema:
-                description: User not found
-          description: ''
-  /assets/:
-    post:
-      operationId: assets_create
-      description: |-
-        ViewSet for managing photo assets.
-        Supports filtering by date, keywords, visibility, etc.
-      summary: Create asset
-      tags:
-      - Assets
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AssetRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/AssetRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/AssetRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Asset'
-          description: ''
+        '204':
+          description: No response body
+  /api/assets/:
     get:
       operationId: assets_list
       description: |-
         ViewSet for managing photo assets.
         Supports filtering by date, keywords, visibility, etc.
-      summary: List assets
       parameters:
       - name: cursor
         required: false
@@ -660,7 +100,7 @@ paths:
         schema:
           type: integer
       tags:
-      - Assets
+      - assets
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -671,257 +111,41 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedAssetList'
           description: ''
-  /assets/bulk_update/:
     post:
-      operationId: assets_bulk_update_create
-      description: Update multiple assets with new metadata
-      summary: Bulk update assets
+      operationId: assets_create
+      description: |-
+        ViewSet for managing photo assets.
+        Supports filtering by date, keywords, visibility, etc.
       tags:
-      - Assets
+      - assets
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AssetRequest'
+              $ref: '#/components/schemas/Asset'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AssetRequest'
+              $ref: '#/components/schemas/Asset'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AssetRequest'
+              $ref: '#/components/schemas/Asset'
         required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
-        '200':
+        '201':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Asset'
           description: ''
-  /assets/complete_upload/:
-    post:
-      operationId: assets_complete_upload_create
-      description: Complete the upload process by creating an Asset record after file
-        upload
-      summary: Complete upload
-      tags:
-      - Upload
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                file_key:
-                  type: string
-                  example: 2024/01/15/uuid.jpg
-                bucket_id:
-                  type: string
-                  format: uuid
-                upload_batch_id:
-                  type: string
-                  format: uuid
-                  nullable: true
-                metadata:
-                  type: object
-                  properties:
-                    width:
-                      type: integer
-                    height:
-                      type: integer
-                    taken_at:
-                      type: string
-                      format: date-time
-                      nullable: true
-                    description:
-                      type: string
-              required:
-              - file_key
-              - bucket_id
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  filename:
-                    type: string
-                  storage_url:
-                    type: string
-                  created_at:
-                    type: string
-                    format: date-time
-          description: ''
-  /assets/get_upload_config/:
-    post:
-      operationId: assets_get_upload_config_create
-      description: Get upload configuration based on storage backend type (presigned
-        URL for S3/MinIO, direct upload for LocalFS)
-      summary: Get upload configuration
-      tags:
-      - Upload
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                filename:
-                  type: string
-                  example: vacation.jpg
-                content_type:
-                  type: string
-                  example: image/jpeg
-                file_size:
-                  type: integer
-                  example: 2048576
-                upload_batch_id:
-                  type: string
-                  format: uuid
-                  nullable: true
-              required:
-              - filename
-              - content_type
-              - file_size
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  upload_method:
-                    type: string
-                    enum:
-                    - presigned_url
-                    - direct_upload
-                  upload_url:
-                    type: string
-                    nullable: true
-                  upload_endpoint:
-                    type: string
-                    nullable: true
-                  fields:
-                    type: object
-                    nullable: true
-                  file_key:
-                    type: string
-                  bucket_id:
-                    type: string
-                  expires_at:
-                    type: string
-                    format: date-time
-                    nullable: true
-          description: ''
-  /assets/request_upload_url/:
-    post:
-      operationId: assets_request_upload_url_create
-      description: Legacy endpoint - use get_upload_config instead. Generate a presigned
-        URL for uploading photos directly to storage
-      summary: Request upload URL (Legacy)
-      tags:
-      - Upload
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                filename:
-                  type: string
-                  example: vacation.jpg
-                content_type:
-                  type: string
-                  example: image/jpeg
-                upload_batch_id:
-                  type: string
-                  format: uuid
-                  nullable: true
-              required:
-              - filename
-              - content_type
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  upload_url:
-                    type: string
-                  fields:
-                    type: object
-                  file_key:
-                    type: string
-                  bucket_id:
-                    type: string
-                  expires_at:
-                    type: string
-                    format: date-time
-          description: ''
-  /assets/upload_file/:
-    post:
-      operationId: assets_upload_file_create
-      description: Upload file directly to Django for LocalFS storage backend
-      summary: Direct file upload (LocalFS only)
-      tags:
-      - Upload
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  type: string
-                  format: binary
-              required:
-              - file
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  file_key:
-                    type: string
-                  bucket_id:
-                    type: string
-                  message:
-                    type: string
-          description: ''
-        '400':
-          content:
-            application/json:
-              schema:
-                description: Bad request or unsupported backend
-          description: ''
-  /assets/{id}/:
-    patch:
-      operationId: assets_partial_update
+  /api/assets/{id}/:
+    get:
+      operationId: assets_retrieve
       description: |-
         ViewSet for managing photo assets.
         Supports filtering by date, keywords, visibility, etc.
-      summary: Partially update asset
       parameters:
       - in: path
         name: id
@@ -931,18 +155,7 @@ paths:
         description: A UUID string identifying this asset.
         required: true
       tags:
-      - Assets
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedAssetRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedAssetRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedAssetRequest'
+      - assets
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -958,7 +171,6 @@ paths:
       description: |-
         ViewSet for managing photo assets.
         Supports filtering by date, keywords, visibility, etc.
-      summary: Update asset
       parameters:
       - in: path
         name: id
@@ -968,19 +180,55 @@ paths:
         description: A UUID string identifying this asset.
         required: true
       tags:
-      - Assets
+      - assets
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AssetRequest'
+              $ref: '#/components/schemas/Asset'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AssetRequest'
+              $ref: '#/components/schemas/Asset'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AssetRequest'
+              $ref: '#/components/schemas/Asset'
         required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+          description: ''
+    patch:
+      operationId: assets_partial_update
+      description: |-
+        ViewSet for managing photo assets.
+        Supports filtering by date, keywords, visibility, etc.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this asset.
+        required: true
+      tags:
+      - assets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAsset'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAsset'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAsset'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -996,7 +244,6 @@ paths:
       description: |-
         ViewSet for managing photo assets.
         Supports filtering by date, keywords, visibility, etc.
-      summary: Delete asset
       parameters:
       - in: path
         name: id
@@ -1006,78 +253,20 @@ paths:
         description: A UUID string identifying this asset.
         required: true
       tags:
-      - Assets
+      - assets
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
           description: No response body
-    get:
-      operationId: assets_retrieve
-      description: |-
-        ViewSet for managing photo assets.
-        Supports filtering by date, keywords, visibility, etc.
-      summary: Get asset details
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this asset.
-        required: true
-      tags:
-      - Assets
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Asset'
-          description: ''
-  /assets/albums/:
-    post:
-      operationId: assets_albums_create
-      description: |-
-        ViewSet for managing photo albums.
-
-        Albums are collections of photos that can be organized and shared.
-      summary: Create album
-      tags:
-      - Albums
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AlbumRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/AlbumRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/AlbumRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Album'
-          description: ''
+  /api/assets/albums/:
     get:
       operationId: assets_albums_list
       description: |-
         ViewSet for managing photo albums.
 
         Albums are collections of photos that can be organized and shared.
-      summary: List albums
       parameters:
       - name: cursor
         required: false
@@ -1092,7 +281,7 @@ paths:
         schema:
           type: integer
       tags:
-      - Albums
+      - assets
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -1103,14 +292,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedAlbumList'
           description: ''
-  /assets/albums/{id}/:
-    patch:
-      operationId: assets_albums_partial_update
+    post:
+      operationId: assets_albums_create
       description: |-
         ViewSet for managing photo albums.
 
         Albums are collections of photos that can be organized and shared.
-      summary: Partially update album
+      tags:
+      - assets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Album'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Album'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Album'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+          description: ''
+  /api/assets/albums/{id}/:
+    get:
+      operationId: assets_albums_retrieve
+      description: |-
+        ViewSet for managing photo albums.
+
+        Albums are collections of photos that can be organized and shared.
       parameters:
       - in: path
         name: id
@@ -1120,18 +338,7 @@ paths:
         description: A UUID string identifying this album.
         required: true
       tags:
-      - Albums
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedAlbumRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedAlbumRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedAlbumRequest'
+      - assets
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -1148,7 +355,6 @@ paths:
         ViewSet for managing photo albums.
 
         Albums are collections of photos that can be organized and shared.
-      summary: Update album
       parameters:
       - in: path
         name: id
@@ -1158,19 +364,56 @@ paths:
         description: A UUID string identifying this album.
         required: true
       tags:
-      - Albums
+      - assets
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AlbumRequest'
+              $ref: '#/components/schemas/Album'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AlbumRequest'
+              $ref: '#/components/schemas/Album'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AlbumRequest'
+              $ref: '#/components/schemas/Album'
         required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+          description: ''
+    patch:
+      operationId: assets_albums_partial_update
+      description: |-
+        ViewSet for managing photo albums.
+
+        Albums are collections of photos that can be organized and shared.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this album.
+        required: true
+      tags:
+      - assets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAlbum'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAlbum'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAlbum'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -1187,7 +430,6 @@ paths:
         ViewSet for managing photo albums.
 
         Albums are collections of photos that can be organized and shared.
-      summary: Delete album
       parameters:
       - in: path
         name: id
@@ -1197,45 +439,17 @@ paths:
         description: A UUID string identifying this album.
         required: true
       tags:
-      - Albums
+      - assets
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
           description: No response body
-    get:
-      operationId: assets_albums_retrieve
-      description: |-
-        ViewSet for managing photo albums.
-
-        Albums are collections of photos that can be organized and shared.
-      summary: Get album details
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this album.
-        required: true
-      tags:
-      - Albums
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Album'
-          description: ''
-  /assets/albums/{id}/add_photos/:
+  /api/assets/albums/{id}/add_photos/:
     post:
       operationId: assets_albums_add_photos_create
-      description: Add multiple photos to this album
-      summary: Add photos to album
+      description: Add photos to this album
       parameters:
       - in: path
         name: id
@@ -1245,18 +459,18 @@ paths:
         description: A UUID string identifying this album.
         required: true
       tags:
-      - Albums
+      - assets
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AlbumRequest'
+              $ref: '#/components/schemas/Album'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AlbumRequest'
+              $ref: '#/components/schemas/Album'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AlbumRequest'
+              $ref: '#/components/schemas/Album'
         required: true
       security:
       - cookieAuth: []
@@ -1268,44 +482,96 @@ paths:
               schema:
                 $ref: '#/components/schemas/Album'
           description: ''
-  /assets/upload-batches/:
+  /api/assets/bulk_update/:
     post:
-      operationId: assets_upload_batches_create
-      description: |-
-        ViewSet for managing upload batches.
-
-        Upload batches help organize and track multiple related photo uploads.
-      summary: Create upload batch
+      operationId: assets_bulk_update_create
+      description: Bulk update assets with new metadata
       tags:
-      - Upload
+      - assets
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UploadBatchRequest'
+              $ref: '#/components/schemas/Asset'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/UploadBatchRequest'
+              $ref: '#/components/schemas/Asset'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/UploadBatchRequest'
+              $ref: '#/components/schemas/Asset'
+        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
-        '201':
+        '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UploadBatch'
+                $ref: '#/components/schemas/Asset'
           description: ''
+  /api/assets/by_date/:
     get:
-      operationId: assets_upload_batches_list
+      operationId: assets_by_date_retrieve
       description: |-
-        ViewSet for managing upload batches.
-
-        Upload batches help organize and track multiple related photo uploads.
-      summary: List upload batches
+        Return all assets for a specific date (YYYY-MM-DD) for a section.
+        Minimal fields for the gallery.
+        Query param: date=YYYY-MM-DD
+      tags:
+      - assets
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+          description: ''
+  /api/assets/gallery/:
+    get:
+      operationId: assets_gallery_retrieve
+      description: |-
+        Lightweight gallery listing for the main grid.
+        Returns minimal fields with cursor pagination.
+        Accepts same filters as list().
+      tags:
+      - assets
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+          description: ''
+  /api/assets/ready-since/:
+    get:
+      operationId: assets_ready_since_retrieve
+      description: |-
+        Return assets that became ready (have a ready thumbnail) since a given ISO timestamp.
+        Query params: since=ISO8601, limit (default 100)
+      tags:
+      - assets
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+          description: ''
+  /api/assets/storage-backends/:
+    get:
+      operationId: assets_storage_backends_list
+      description: |-
+        ViewSet for managing storage backends (advanced usage).
+        Most users should use the simplified /api/storage/ endpoints instead.
       parameters:
       - name: cursor
         required: false
@@ -1320,7 +586,7 @@ paths:
         schema:
           type: integer
       tags:
-      - Upload
+      - assets
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -1329,181 +595,26 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedUploadBatchList'
+                $ref: '#/components/schemas/PaginatedStorageBackendList'
           description: ''
-  /assets/upload-batches/create_batch/:
-    post:
-      operationId: assets_upload_batches_create_batch_create
-      description: Create a new upload batch for organizing uploads
-      summary: Create upload batch
-      tags:
-      - Upload
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UploadBatchRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/UploadBatchRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/UploadBatchRequest'
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UploadBatch'
-          description: ''
-  /assets/upload-batches/{id}/:
-    patch:
-      operationId: assets_upload_batches_partial_update
-      description: |-
-        ViewSet for managing upload batches.
-
-        Upload batches help organize and track multiple related photo uploads.
-      summary: Partially update upload batch
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this upload batch.
-        required: true
-      tags:
-      - Upload
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedUploadBatchRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedUploadBatchRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedUploadBatchRequest'
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UploadBatch'
-          description: ''
-    put:
-      operationId: assets_upload_batches_update
-      description: |-
-        ViewSet for managing upload batches.
-
-        Upload batches help organize and track multiple related photo uploads.
-      summary: Update upload batch
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this upload batch.
-        required: true
-      tags:
-      - Upload
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UploadBatchRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/UploadBatchRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/UploadBatchRequest'
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UploadBatch'
-          description: ''
-    delete:
-      operationId: assets_upload_batches_destroy
-      description: |-
-        ViewSet for managing upload batches.
-
-        Upload batches help organize and track multiple related photo uploads.
-      summary: Delete upload batch
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this upload batch.
-        required: true
-      tags:
-      - Upload
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '204':
-          description: No response body
-    get:
-      operationId: assets_upload_batches_retrieve
-      description: |-
-        ViewSet for managing upload batches.
-
-        Upload batches help organize and track multiple related photo uploads.
-      summary: Get upload batch details
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this upload batch.
-        required: true
-      tags:
-      - Upload
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UploadBatch'
-          description: ''
-  /assets/storage-backends/:
     post:
       operationId: assets_storage_backends_create
-      description: ViewSet for managing storage backends.
-      summary: Create storage backend
+      description: |-
+        ViewSet for managing storage backends (advanced usage).
+        Most users should use the simplified /api/storage/ endpoints instead.
       tags:
-      - Storage
+      - assets
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/StorageBackendRequest'
+              $ref: '#/components/schemas/StorageBackend'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/StorageBackendRequest'
+              $ref: '#/components/schemas/StorageBackend'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/StorageBackendRequest'
+              $ref: '#/components/schemas/StorageBackend'
         required: true
       security:
       - cookieAuth: []
@@ -1515,115 +626,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/StorageBackend'
           description: ''
+  /api/assets/storage-backends/{id}/:
     get:
-      operationId: assets_storage_backends_list
-      description: ViewSet for managing storage backends.
-      summary: List storage backends
-      parameters:
-      - name: cursor
-        required: false
-        in: query
-        description: The pagination cursor value.
-        schema:
-          type: string
-      - name: limit
-        required: false
-        in: query
-        description: Number of results to return per page.
-        schema:
-          type: integer
-      tags:
-      - Storage
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaginatedStorageBackendList'
-          description: ''
-  /assets/storage-backends/setup_minio/:
-    post:
-      operationId: assets_storage_backends_setup_minio_create
-      description: Quick setup for development - creates default MinIO backend and
-        originals bucket
-      summary: Setup default MinIO backend
-      tags:
-      - Storage
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                endpoint_url:
-                  type: string
-                  default: http://localhost:9000
-                access_key:
-                  type: string
-                  default: minio
-                secret_key:
-                  type: string
-                  default: minio123
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  backend_created:
-                    type: boolean
-                  bucket_created:
-                    type: boolean
-                  backend:
-                    type: object
-                  bucket:
-                    type: object
-          description: ''
-  /assets/storage-backends/status/:
-    get:
-      operationId: assets_storage_backends_status_retrieve
-      description: Check if storage backends and buckets are properly configured
-      summary: Check storage configuration status
-      tags:
-      - Storage
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  configured:
-                    type: boolean
-                  has_backends:
-                    type: boolean
-                  has_default_backend:
-                    type: boolean
-                  has_originals_bucket:
-                    type: boolean
-                  default_backend:
-                    type: object
-                    nullable: true
-                  recommendations:
-                    type: array
-                    items:
-                      type: string
-          description: ''
-  /assets/storage-backends/{id}/:
-    patch:
-      operationId: assets_storage_backends_partial_update
-      description: ViewSet for managing storage backends.
-      summary: Partially update storage backend
+      operationId: assets_storage_backends_retrieve
+      description: |-
+        ViewSet for managing storage backends (advanced usage).
+        Most users should use the simplified /api/storage/ endpoints instead.
       parameters:
       - in: path
         name: id
@@ -1633,18 +641,7 @@ paths:
         description: A UUID string identifying this storage backend.
         required: true
       tags:
-      - Storage
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedStorageBackendRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedStorageBackendRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedStorageBackendRequest'
+      - assets
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -1657,8 +654,9 @@ paths:
           description: ''
     put:
       operationId: assets_storage_backends_update
-      description: ViewSet for managing storage backends.
-      summary: Update storage backend
+      description: |-
+        ViewSet for managing storage backends (advanced usage).
+        Most users should use the simplified /api/storage/ endpoints instead.
       parameters:
       - in: path
         name: id
@@ -1668,19 +666,55 @@ paths:
         description: A UUID string identifying this storage backend.
         required: true
       tags:
-      - Storage
+      - assets
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/StorageBackendRequest'
+              $ref: '#/components/schemas/StorageBackend'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/StorageBackendRequest'
+              $ref: '#/components/schemas/StorageBackend'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/StorageBackendRequest'
+              $ref: '#/components/schemas/StorageBackend'
         required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageBackend'
+          description: ''
+    patch:
+      operationId: assets_storage_backends_partial_update
+      description: |-
+        ViewSet for managing storage backends (advanced usage).
+        Most users should use the simplified /api/storage/ endpoints instead.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this storage backend.
+        required: true
+      tags:
+      - assets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStorageBackend'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStorageBackend'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStorageBackend'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -1693,8 +727,9 @@ paths:
           description: ''
     delete:
       operationId: assets_storage_backends_destroy
-      description: ViewSet for managing storage backends.
-      summary: Delete storage backend
+      description: |-
+        ViewSet for managing storage backends (advanced usage).
+        Most users should use the simplified /api/storage/ endpoints instead.
       parameters:
       - in: path
         name: id
@@ -1704,70 +739,17 @@ paths:
         description: A UUID string identifying this storage backend.
         required: true
       tags:
-      - Storage
+      - assets
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
           description: No response body
-    get:
-      operationId: assets_storage_backends_retrieve
-      description: ViewSet for managing storage backends.
-      summary: Get storage backend details
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this storage backend.
-        required: true
-      tags:
-      - Storage
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StorageBackend'
-          description: ''
-  /assets/storage-buckets/:
-    post:
-      operationId: assets_storage_buckets_create
-      description: ViewSet for managing storage buckets.
-      summary: Create storage bucket
-      tags:
-      - Storage
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/StorageBucketRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/StorageBucketRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/StorageBucketRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StorageBucket'
-          description: ''
+  /api/assets/storage-buckets/:
     get:
       operationId: assets_storage_buckets_list
       description: ViewSet for managing storage buckets.
-      summary: List storage buckets
       parameters:
       - name: cursor
         required: false
@@ -1782,7 +764,7 @@ paths:
         schema:
           type: integer
       tags:
-      - Storage
+      - assets
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -1793,11 +775,37 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedStorageBucketList'
           description: ''
-  /assets/storage-buckets/{id}/:
-    patch:
-      operationId: assets_storage_buckets_partial_update
+    post:
+      operationId: assets_storage_buckets_create
       description: ViewSet for managing storage buckets.
-      summary: Partially update storage bucket
+      tags:
+      - assets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorageBucket'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StorageBucket'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StorageBucket'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageBucket'
+          description: ''
+  /api/assets/storage-buckets/{id}/:
+    get:
+      operationId: assets_storage_buckets_retrieve
+      description: ViewSet for managing storage buckets.
       parameters:
       - in: path
         name: id
@@ -1807,18 +815,7 @@ paths:
         description: A UUID string identifying this storage bucket.
         required: true
       tags:
-      - Storage
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedStorageBucketRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedStorageBucketRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedStorageBucketRequest'
+      - assets
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -1832,7 +829,6 @@ paths:
     put:
       operationId: assets_storage_buckets_update
       description: ViewSet for managing storage buckets.
-      summary: Update storage bucket
       parameters:
       - in: path
         name: id
@@ -1842,19 +838,53 @@ paths:
         description: A UUID string identifying this storage bucket.
         required: true
       tags:
-      - Storage
+      - assets
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/StorageBucketRequest'
+              $ref: '#/components/schemas/StorageBucket'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/StorageBucketRequest'
+              $ref: '#/components/schemas/StorageBucket'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/StorageBucketRequest'
+              $ref: '#/components/schemas/StorageBucket'
         required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageBucket'
+          description: ''
+    patch:
+      operationId: assets_storage_buckets_partial_update
+      description: ViewSet for managing storage buckets.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this storage bucket.
+        required: true
+      tags:
+      - assets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStorageBucket'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStorageBucket'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStorageBucket'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -1868,7 +898,6 @@ paths:
     delete:
       operationId: assets_storage_buckets_destroy
       description: ViewSet for managing storage buckets.
-      summary: Delete storage bucket
       parameters:
       - in: path
         name: id
@@ -1878,27 +907,66 @@ paths:
         description: A UUID string identifying this storage bucket.
         required: true
       tags:
-      - Storage
+      - assets
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
           description: No response body
-    get:
-      operationId: assets_storage_buckets_retrieve
-      description: ViewSet for managing storage buckets.
-      summary: Get storage bucket details
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this storage bucket.
-        required: true
+  /api/assets/storage/setup/:
+    post:
+      operationId: assets_storage_setup_create
+      description: |-
+        Simple storage setup - provide a path and we'll handle the rest.
+
+        POST /api/storage/setup/
+        {
+            "path": "/home/user/photos"
+        }
+
+        This will:
+        - Create a StorageBackend with the path
+        - Create originals and thumbnails buckets
+        - Set everything as default
+        - Create the directory structure
       tags:
-      - Storage
+      - assets
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/assets/storage/status/:
+    get:
+      operationId: assets_storage_status_retrieve
+      description: |-
+        Simple storage status check.
+
+        GET /api/storage/status/
+
+        Returns:
+        {
+            "configured": true/false,
+            "path": "/path/to/storage" or null
+        }
+      tags:
+      - assets
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/assets/timeline/:
+    get:
+      operationId: assets_timeline_retrieve
+      description: |-
+        Return available photo dates and counts for the timeline sidebar.
+        Groups by capture day (YYYY-MM-DD) using taken_at if present, else created_at.
+      tags:
+      - assets
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -1907,26 +975,221 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StorageBucket'
+                $ref: '#/components/schemas/Asset'
           description: ''
-  /people/:
+  /api/assets/upload/config/:
     post:
-      operationId: people_create
-      description: ViewSet for managing people and face recognition.
-      summary: Create person
+      operationId: assets_upload_config_create
+      description: |-
+        Get upload configuration for local storage.
+
+        POST /api/assets/upload/config/
+        {
+            "filename": "photo.jpg",
+            "content_type": "image/jpeg"
+        }
       tags:
-      - People
+      - assets
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PersonRequest'
+              $ref: '#/components/schemas/Asset'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PersonRequest'
+              $ref: '#/components/schemas/Asset'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PersonRequest'
+              $ref: '#/components/schemas/Asset'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+          description: ''
+  /api/assets/upload_file/:
+    post:
+      operationId: assets_upload_file_create
+      description: |-
+        Direct file upload to local filesystem storage.
+
+        POST /api/assets/upload_file/
+        Content-Type: multipart/form-data
+
+        Body:
+            file: binary file data
+            bucket_id (optional): target bucket ID (defaults to originals bucket)
+            metadata (optional): JSON string with additional metadata
+
+        Returns:
+            Asset details including asset_id
+      tags:
+      - assets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Asset'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Asset'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Asset'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+          description: ''
+  /api/auth/change-password/:
+    post:
+      operationId: auth_change_password_create
+      description: Change user password
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: User login
+      tags:
+      - auth
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      description: User logout
+      tags:
+      - auth
+      responses:
+        '200':
+          description: No response body
+  /api/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      description: Get user profile
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/auth/me/update/:
+    put:
+      operationId: auth_me_update_update
+      description: Update user profile
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+    patch:
+      operationId: auth_me_update_partial_update
+      description: Update user profile
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/metadata/search/clip/:
+    get:
+      operationId: metadata_search_clip_retrieve
+      description: |-
+        Search assets by CLIP text embedding; returns ranked asset IDs with similarity.
+
+        Query params:
+          - q (text), limit (default 50)
+          - people (comma-separated UUIDs) or person (single UUID)
+          - people_mode: 'all' | 'any' (default 'all')
+          - albums (comma-separated UUIDs) or album (single UUID)
+      tags:
+      - metadata
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/metadata/search/clip-neighbors/:
+    get:
+      operationId: metadata_search_clip_neighbors_retrieve
+      description: |-
+        Return nearest neighbor assets by CLIP embedding for a given asset.
+
+        Query params:
+          - asset_id (required)
+          - k (default 5): number of neighbors per asset
+          - max_distance (optional): filter results to distances <= max_distance
+      tags:
+      - metadata
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/people/:
+    get:
+      operationId: people_list
+      description: ViewSet for managing people and face recognition.
+      tags:
+      - people
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Person'
+          description: ''
+    post:
+      operationId: people_create
+      description: ViewSet for managing people and face recognition.
+      tags:
+      - people
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Person'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Person'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Person'
         required: true
       security:
       - cookieAuth: []
@@ -1938,69 +1201,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/Person'
           description: ''
+  /api/people/{id}/:
     get:
-      operationId: people_list
+      operationId: people_retrieve
       description: ViewSet for managing people and face recognition.
-      summary: List people
-      parameters:
-      - name: cursor
-        required: false
-        in: query
-        description: The pagination cursor value.
-        schema:
-          type: string
-      - name: limit
-        required: false
-        in: query
-        description: Number of results to return per page.
-        schema:
-          type: integer
-      tags:
-      - People
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaginatedPersonList'
-          description: ''
-  /people/merge/:
-    post:
-      operationId: people_merge_create
-      description: Merge multiple people into one.
-      summary: Merge people
-      tags:
-      - People
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PersonRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PersonRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PersonRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Person'
-          description: ''
-  /people/{id}/:
-    patch:
-      operationId: people_partial_update
-      description: ViewSet for managing people and face recognition.
-      summary: Partially update person
       parameters:
       - in: path
         name: id
@@ -2010,18 +1214,7 @@ paths:
         description: A UUID string identifying this person.
         required: true
       tags:
-      - People
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedPersonRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedPersonRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedPersonRequest'
+      - people
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -2035,7 +1228,6 @@ paths:
     put:
       operationId: people_update
       description: ViewSet for managing people and face recognition.
-      summary: Update person
       parameters:
       - in: path
         name: id
@@ -2045,19 +1237,53 @@ paths:
         description: A UUID string identifying this person.
         required: true
       tags:
-      - People
+      - people
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PersonRequest'
+              $ref: '#/components/schemas/Person'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PersonRequest'
+              $ref: '#/components/schemas/Person'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PersonRequest'
+              $ref: '#/components/schemas/Person'
         required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Person'
+          description: ''
+    patch:
+      operationId: people_partial_update
+      description: ViewSet for managing people and face recognition.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this person.
+        required: true
+      tags:
+      - people
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPerson'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPerson'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPerson'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -2071,7 +1297,6 @@ paths:
     delete:
       operationId: people_destroy
       description: ViewSet for managing people and face recognition.
-      summary: Delete person
       parameters:
       - in: path
         name: id
@@ -2081,17 +1306,21 @@ paths:
         description: A UUID string identifying this person.
         required: true
       tags:
-      - People
+      - people
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
           description: No response body
-    get:
-      operationId: people_retrieve
-      description: ViewSet for managing people and face recognition.
-      summary: Get person details
+  /api/people/{id}/merge/:
+    post:
+      operationId: people_merge_create
+      description: |-
+        Merge people.
+        Supports two forms:
+        - Detail merge (default target=pk): { source_person_ids: [...], delete_source_persons?: bool }
+        - Single-source merge (default source=pk): { target_person_id: uuid, delete_source_persons?: bool }
       parameters:
       - in: path
         name: id
@@ -2101,7 +1330,19 @@ paths:
         description: A UUID string identifying this person.
         required: true
       tags:
-      - People
+      - people
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Person'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Person'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Person'
+        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -2112,39 +1353,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/Person'
           description: ''
-  /people/faces/:
+  /api/people/bulk-merge/:
     post:
-      operationId: people_faces_create
-      description: ViewSet for managing face detection results.
-      summary: Create face
+      operationId: people_bulk_merge_create
+      description: 'Bulk merge: specify target_person_id and source_person_ids.'
       tags:
-      - People
+      - people
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/FaceRequest'
+              $ref: '#/components/schemas/Person'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/FaceRequest'
+              $ref: '#/components/schemas/Person'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/FaceRequest'
+              $ref: '#/components/schemas/Person'
         required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
-        '201':
+        '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Face'
+                $ref: '#/components/schemas/Person'
           description: ''
+  /api/people/faces/:
     get:
       operationId: people_faces_list
       description: ViewSet for managing face detection results.
-      summary: List faces
       parameters:
       - name: cursor
         required: false
@@ -2159,7 +1399,7 @@ paths:
         schema:
           type: integer
       tags:
-      - People
+      - people
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -2170,11 +1410,37 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedFaceList'
           description: ''
-  /people/faces/{id}/:
-    patch:
-      operationId: people_faces_partial_update
+    post:
+      operationId: people_faces_create
       description: ViewSet for managing face detection results.
-      summary: Partially update face
+      tags:
+      - people
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Face'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Face'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Face'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Face'
+          description: ''
+  /api/people/faces/{id}/:
+    get:
+      operationId: people_faces_retrieve
+      description: ViewSet for managing face detection results.
       parameters:
       - in: path
         name: id
@@ -2184,18 +1450,7 @@ paths:
         description: A UUID string identifying this face.
         required: true
       tags:
-      - People
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedFaceRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedFaceRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedFaceRequest'
+      - people
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -2209,7 +1464,6 @@ paths:
     put:
       operationId: people_faces_update
       description: ViewSet for managing face detection results.
-      summary: Update face
       parameters:
       - in: path
         name: id
@@ -2219,19 +1473,53 @@ paths:
         description: A UUID string identifying this face.
         required: true
       tags:
-      - People
+      - people
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/FaceRequest'
+              $ref: '#/components/schemas/Face'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/FaceRequest'
+              $ref: '#/components/schemas/Face'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/FaceRequest'
+              $ref: '#/components/schemas/Face'
         required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Face'
+          description: ''
+    patch:
+      operationId: people_faces_partial_update
+      description: ViewSet for managing face detection results.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this face.
+        required: true
+      tags:
+      - people
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFace'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFace'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFace'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -2245,7 +1533,6 @@ paths:
     delete:
       operationId: people_faces_destroy
       description: ViewSet for managing face detection results.
-      summary: Delete face
       parameters:
       - in: path
         name: id
@@ -2255,17 +1542,19 @@ paths:
         description: A UUID string identifying this face.
         required: true
       tags:
-      - People
+      - people
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
           description: No response body
+  /api/people/faces/{id}/candidates/:
     get:
-      operationId: people_faces_retrieve
-      description: ViewSet for managing face detection results.
-      summary: Get face details
+      operationId: people_faces_candidates_retrieve
+      description: |-
+        Return candidate persons for this face, ranked by similarity.
+        Query params: limit (default 50)
       parameters:
       - in: path
         name: id
@@ -2275,7 +1564,7 @@ paths:
         description: A UUID string identifying this face.
         required: true
       tags:
-      - People
+      - people
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -2286,39 +1575,119 @@ paths:
               schema:
                 $ref: '#/components/schemas/Face'
           description: ''
-  /people/merge-suggestions/:
+  /api/people/faces/assign/:
     post:
-      operationId: people_merge_suggestions_create
-      description: ViewSet for managing person merge suggestions.
-      summary: Create merge suggestion
+      operationId: people_faces_assign_create
+      description: |-
+        Assign one or more faces to a person.
+        Body: { face_ids: [uuid,...], person_id: uuid }
       tags:
-      - People
+      - people
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PersonMergeSuggestionRequest'
+              $ref: '#/components/schemas/Face'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PersonMergeSuggestionRequest'
+              $ref: '#/components/schemas/Face'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PersonMergeSuggestionRequest'
+              $ref: '#/components/schemas/Face'
         required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
-        '201':
+        '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PersonMergeSuggestion'
+                $ref: '#/components/schemas/Face'
           description: ''
+  /api/people/faces/manual-create/:
+    post:
+      operationId: people_faces_manual_create_create
+      description: |-
+        Create a manual face selection on an asset and enqueue embedding + thumbnail.
+        Body: { asset_id: uuid, x:0..1, y:0..1, w:0..1, h:0..1, person_id?: uuid }
+      tags:
+      - people
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Face'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Face'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Face'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Face'
+          description: ''
+  /api/people/faces/unassign/:
+    post:
+      operationId: people_faces_unassign_create
+      description: |-
+        Unassign one or more faces from any person (set person to null).
+        Body: { face_ids: [uuid,...] }
+      tags:
+      - people
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Face'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Face'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Face'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Face'
+          description: ''
+  /api/people/faces/unassigned-assets/:
+    get:
+      operationId: people_faces_unassigned_assets_retrieve
+      description: |-
+        List assets that have at least one unassigned face (person is null).
+        Cursor-paginated and uses the asset gallery serializer for lightweight payload.
+        Query params: cursor, limit
+      tags:
+      - people
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Face'
+          description: ''
+  /api/people/merge-suggestions/:
     get:
       operationId: people_merge_suggestions_list
       description: ViewSet for managing person merge suggestions.
-      summary: List merge suggestions
       parameters:
       - name: cursor
         required: false
@@ -2333,7 +1702,7 @@ paths:
         schema:
           type: integer
       tags:
-      - People
+      - people
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -2344,11 +1713,37 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedPersonMergeSuggestionList'
           description: ''
-  /people/merge-suggestions/{id}/:
-    patch:
-      operationId: people_merge_suggestions_partial_update
+    post:
+      operationId: people_merge_suggestions_create
       description: ViewSet for managing person merge suggestions.
-      summary: Partially update merge suggestion
+      tags:
+      - people
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonMergeSuggestion'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PersonMergeSuggestion'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PersonMergeSuggestion'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMergeSuggestion'
+          description: ''
+  /api/people/merge-suggestions/{id}/:
+    get:
+      operationId: people_merge_suggestions_retrieve
+      description: ViewSet for managing person merge suggestions.
       parameters:
       - in: path
         name: id
@@ -2358,18 +1753,7 @@ paths:
         description: A UUID string identifying this person merge suggestion.
         required: true
       tags:
-      - People
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedPersonMergeSuggestionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedPersonMergeSuggestionRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedPersonMergeSuggestionRequest'
+      - people
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -2383,7 +1767,6 @@ paths:
     put:
       operationId: people_merge_suggestions_update
       description: ViewSet for managing person merge suggestions.
-      summary: Update merge suggestion
       parameters:
       - in: path
         name: id
@@ -2393,19 +1776,53 @@ paths:
         description: A UUID string identifying this person merge suggestion.
         required: true
       tags:
-      - People
+      - people
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PersonMergeSuggestionRequest'
+              $ref: '#/components/schemas/PersonMergeSuggestion'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PersonMergeSuggestionRequest'
+              $ref: '#/components/schemas/PersonMergeSuggestion'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PersonMergeSuggestionRequest'
+              $ref: '#/components/schemas/PersonMergeSuggestion'
         required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMergeSuggestion'
+          description: ''
+    patch:
+      operationId: people_merge_suggestions_partial_update
+      description: ViewSet for managing person merge suggestions.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this person merge suggestion.
+        required: true
+      tags:
+      - people
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPersonMergeSuggestion'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPersonMergeSuggestion'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPersonMergeSuggestion'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -2419,7 +1836,6 @@ paths:
     delete:
       operationId: people_merge_suggestions_destroy
       description: ViewSet for managing person merge suggestions.
-      summary: Delete merge suggestion
       parameters:
       - in: path
         name: id
@@ -2429,37 +1845,39 @@ paths:
         description: A UUID string identifying this person merge suggestion.
         required: true
       tags:
-      - People
+      - people
       security:
       - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
           description: No response body
+  /api/setup/check/:
     get:
-      operationId: people_merge_suggestions_retrieve
-      description: ViewSet for managing person merge suggestions.
-      summary: Get merge suggestion details
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this person merge suggestion.
-        required: true
+      operationId: setup_check_retrieve
+      description: Check if initial setup is needed
       tags:
-      - People
+      - setup
       security:
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PersonMergeSuggestion'
-          description: ''
+          description: No response body
+  /api/setup/create-admin/:
+    post:
+      operationId: setup_create_admin_create
+      description: Create the first admin user - only works when no users exist
+      tags:
+      - setup
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
 components:
   schemas:
     Album:
@@ -2475,39 +1893,27 @@ components:
           maxLength: 255
         description:
           type: string
-        coverAsset:
+        cover_asset:
           type: string
           format: uuid
           nullable: true
-        photoCount:
+        photo_count:
           type: string
           readOnly: true
-        createdAt:
+        created_at:
           type: string
           format: date-time
           readOnly: true
-        updatedAt:
+        updated_at:
           type: string
           format: date-time
           readOnly: true
       required:
+      - created_at
+      - id
+      - photo_count
       - title
-    AlbumRequest:
-      type: object
-      description: Serializer for photo Album model
-      properties:
-        title:
-          type: string
-          minLength: 1
-          maxLength: 255
-        description:
-          type: string
-        coverAsset:
-          type: string
-          format: uuid
-          nullable: true
-      required:
-      - title
+      - updated_at
     Asset:
       type: object
       description: Serializer for photo Asset model
@@ -2519,25 +1925,25 @@ components:
         sha256:
           type: string
           readOnly: true
-        storageBucket:
+        storage_bucket:
           type: string
           format: uuid
-        storageBucketName:
+        storage_bucket_name:
           type: string
           readOnly: true
-        storageBackendName:
+        storage_backend_name:
           type: string
           readOnly: true
-        storageKey:
+        storage_key:
           type: string
           maxLength: 1024
-        storageUrl:
+        storage_url:
           type: string
           readOnly: true
-        storagePath:
+        storage_path:
           type: string
           readOnly: true
-        mimeType:
+        mime_type:
           type: string
           maxLength: 100
         width:
@@ -2548,14 +1954,14 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
-        takenAt:
+        taken_at:
           type: string
           format: date-time
           nullable: true
         description:
           type: string
           description: User-provided description or caption for this photo
-        keywordNames:
+        keyword_names:
           type: array
           items:
             type: string
@@ -2563,97 +1969,54 @@ components:
         phash:
           type: string
           maxLength: 16
-        visibility:
-          enum:
-          - shared
-          - private
+        thumbnail_url:
           type: string
-          description: |-
-            * `shared` - Shared
-            * `private` - Private
-          x-spec-enum-id: 1d7dc2986bdf8c74
-        createdAt:
+          readOnly: true
+        thumbnail_urls:
+          type: string
+          readOnly: true
+        original_url:
+          type: string
+          readOnly: true
+        metadata:
+          type: string
+          readOnly: true
+        faces:
+          type: string
+          readOnly: true
+        created_at:
           type: string
           format: date-time
           readOnly: true
-        updatedAt:
+        updated_at:
           type: string
           format: date-time
           readOnly: true
       required:
+      - created_at
+      - faces
       - height
-      - mimeType
-      - storageBucket
-      - storageKey
+      - id
+      - keyword_names
+      - metadata
+      - mime_type
+      - original_url
+      - sha256
+      - storage_backend_name
+      - storage_bucket
+      - storage_bucket_name
+      - storage_key
+      - storage_path
+      - storage_url
+      - thumbnail_url
+      - thumbnail_urls
+      - updated_at
       - width
-    AssetRequest:
-      type: object
-      description: Serializer for photo Asset model
-      properties:
-        storageBucket:
-          type: string
-          format: uuid
-        storageKey:
-          type: string
-          minLength: 1
-          maxLength: 1024
-        mimeType:
-          type: string
-          minLength: 1
-          maxLength: 100
-        width:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        height:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        takenAt:
-          type: string
-          format: date-time
-          nullable: true
-        description:
-          type: string
-          description: User-provided description or caption for this photo
-        phash:
-          type: string
-          maxLength: 16
-        visibility:
-          enum:
-          - shared
-          - private
-          type: string
-          description: |-
-            * `shared` - Shared
-            * `private` - Private
-          x-spec-enum-id: 1d7dc2986bdf8c74
-      required:
-      - height
-      - mimeType
-      - storageBucket
-      - storageKey
-      - width
-    ChangePasswordRequest:
-      type: object
-      description: Serializer for changing password
-      properties:
-        oldPassword:
-          type: string
-          writeOnly: true
-          minLength: 1
-        newPassword:
-          type: string
-          writeOnly: true
-          minLength: 6
-        confirmPassword:
-          type: string
-          writeOnly: true
-          minLength: 1
-      required:
-      - confirmPassword
-      - newPassword
-      - oldPassword
+    BackendTypeEnum:
+      enum:
+      - local
+      type: string
+      description: '* `local` - Local File System'
     Face:
       type: object
       description: Serializer for Face model
@@ -2665,14 +2028,14 @@ components:
         asset:
           type: string
           format: uuid
-        assetId:
+        asset_id:
           type: string
           readOnly: true
         person:
           type: string
           format: uuid
           nullable: true
-        personName:
+        person_name:
           type: string
           readOnly: true
         x:
@@ -2694,82 +2057,41 @@ components:
         quality:
           type: number
           format: double
-        detectionConfidence:
+        detection_confidence:
           type: number
           format: double
-        detectionModel:
+        thumbnail_url:
+          type: string
+          readOnly: true
+        person_headshot_url:
+          type: string
+          readOnly: true
+        detection_model:
           type: string
           maxLength: 100
-        createdAt:
+        created_at:
           type: string
           format: date-time
           readOnly: true
-        updatedAt:
+        updated_at:
           type: string
           format: date-time
           readOnly: true
       required:
       - asset
+      - asset_id
+      - created_at
+      - embedding
       - h
+      - id
+      - person_headshot_url
+      - person_name
       - quality
+      - thumbnail_url
+      - updated_at
       - w
       - x
       - y
-    FaceRequest:
-      type: object
-      description: Serializer for Face model
-      properties:
-        asset:
-          type: string
-          format: uuid
-        person:
-          type: string
-          format: uuid
-          nullable: true
-        x:
-          type: number
-          format: double
-        y:
-          type: number
-          format: double
-        w:
-          type: number
-          format: double
-        h:
-          type: number
-          format: double
-        quality:
-          type: number
-          format: double
-        detectionConfidence:
-          type: number
-          format: double
-        detectionModel:
-          type: string
-          minLength: 1
-          maxLength: 100
-      required:
-      - asset
-      - h
-      - quality
-      - w
-      - x
-      - y
-    LoginRequest:
-      type: object
-      description: Serializer for user login
-      properties:
-        username:
-          type: string
-          minLength: 1
-          maxLength: 150
-        password:
-          type: string
-          writeOnly: true
-          minLength: 1
-      required:
-      - password
-      - username
     PaginatedAlbumList:
       type: object
       required:
@@ -2827,25 +2149,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Face'
-    PaginatedPersonList:
-      type: object
-      required:
-      - results
-      properties:
-        next:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
-        previous:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/Person'
     PaginatedPersonMergeSuggestionList:
       type: object
       required:
@@ -2903,53 +2206,65 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StorageBucket'
-    PaginatedUploadBatchList:
-      type: object
-      required:
-      - results
-      properties:
-        next:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
-        previous:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/UploadBatch'
-    PatchedAlbumRequest:
+    PatchedAlbum:
       type: object
       description: Serializer for photo Album model
       properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
         title:
           type: string
-          minLength: 1
           maxLength: 255
         description:
           type: string
-        coverAsset:
+        cover_asset:
           type: string
           format: uuid
           nullable: true
-    PatchedAssetRequest:
+        photo_count:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedAsset:
       type: object
       description: Serializer for photo Asset model
       properties:
-        storageBucket:
+        id:
           type: string
           format: uuid
-        storageKey:
+          readOnly: true
+        sha256:
           type: string
-          minLength: 1
+          readOnly: true
+        storage_bucket:
+          type: string
+          format: uuid
+        storage_bucket_name:
+          type: string
+          readOnly: true
+        storage_backend_name:
+          type: string
+          readOnly: true
+        storage_key:
+          type: string
           maxLength: 1024
-        mimeType:
+        storage_url:
           type: string
-          minLength: 1
+          readOnly: true
+        storage_path:
+          type: string
+          readOnly: true
+        mime_type:
+          type: string
           maxLength: 100
         width:
           type: integer
@@ -2959,36 +2274,65 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
-        takenAt:
+        taken_at:
           type: string
           format: date-time
           nullable: true
         description:
           type: string
           description: User-provided description or caption for this photo
+        keyword_names:
+          type: array
+          items:
+            type: string
+          readOnly: true
         phash:
           type: string
           maxLength: 16
-        visibility:
-          enum:
-          - shared
-          - private
+        thumbnail_url:
           type: string
-          description: |-
-            * `shared` - Shared
-            * `private` - Private
-          x-spec-enum-id: 1d7dc2986bdf8c74
-    PatchedFaceRequest:
+          readOnly: true
+        thumbnail_urls:
+          type: string
+          readOnly: true
+        original_url:
+          type: string
+          readOnly: true
+        metadata:
+          type: string
+          readOnly: true
+        faces:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedFace:
       type: object
       description: Serializer for Face model
       properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
         asset:
           type: string
           format: uuid
+        asset_id:
+          type: string
+          readOnly: true
         person:
           type: string
           format: uuid
           nullable: true
+        person_name:
+          type: string
+          readOnly: true
         x:
           type: number
           format: double
@@ -3001,185 +2345,171 @@ components:
         h:
           type: number
           format: double
+        embedding:
+          type: string
+          format: byte
+          readOnly: true
         quality:
           type: number
           format: double
-        detectionConfidence:
+        detection_confidence:
           type: number
           format: double
-        detectionModel:
+        thumbnail_url:
           type: string
-          minLength: 1
+          readOnly: true
+        person_headshot_url:
+          type: string
+          readOnly: true
+        detection_model:
+          type: string
           maxLength: 100
-    PatchedPersonMergeSuggestionRequest:
-      type: object
-      description: Serializer for PersonMergeSuggestion model
-      properties:
-        personA:
-          type: string
-          format: uuid
-        personB:
-          type: string
-          format: uuid
-        cosineSimilarity:
-          type: number
-          format: double
-        confidenceScore:
-          type: number
-          format: double
-        status:
-          enum:
-          - open
-          - accepted
-          - rejected
-          type: string
-          description: |-
-            * `open` - Open
-            * `accepted` - Accepted
-            * `rejected` - Rejected
-          x-spec-enum-id: b53e807e421c50fd
-        reviewedBy:
-          type: integer
-          nullable: true
-        reviewedAt:
+        created_at:
           type: string
           format: date-time
-          nullable: true
-    PatchedPersonRequest:
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedPerson:
       type: object
       description: Serializer for Person model
       properties:
-        displayName:
+        id:
           type: string
-          minLength: 1
+          format: uuid
+          readOnly: true
+        display_name:
+          type: string
           maxLength: 255
         aka: {}
         notes:
           type: string
-        embeddingCentroid:
+        face_count:
+          type: string
+          readOnly: true
+        asset_count:
+          type: string
+          readOnly: true
+        headshot_url:
+          type: string
+          readOnly: true
+        embedding_centroid:
           type: string
           nullable: true
-    PatchedStorageBackendRequest:
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedPersonMergeSuggestion:
+      type: object
+      description: Serializer for PersonMergeSuggestion model
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        person_a:
+          type: string
+          format: uuid
+        person_a_name:
+          type: string
+          readOnly: true
+        person_b:
+          type: string
+          format: uuid
+        person_b_name:
+          type: string
+          readOnly: true
+        cosine_similarity:
+          type: number
+          format: double
+        confidence_score:
+          type: number
+          format: double
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        reviewed_by:
+          type: integer
+          nullable: true
+        reviewed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedStorageBackend:
       type: object
       description: Serializer for StorageBackend model
       properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
         name:
           type: string
-          minLength: 1
           maxLength: 100
-        backendType:
-          enum:
-          - s3
-          - minio
-          - gcs
-          - azure
-          - local
-          type: string
-          description: |-
-            * `s3` - Amazon S3
-            * `minio` - MinIO
-            * `gcs` - Google Cloud Storage
-            * `azure` - Azure Blob Storage
-            * `local` - Local File System
-          x-spec-enum-id: cc127605a956c706
-        endpointUrl:
-          type: string
-          format: uri
-          maxLength: 200
-        region:
-          type: string
-          maxLength: 50
-        isActive:
+        backend_type:
+          $ref: '#/components/schemas/BackendTypeEnum'
+        config:
+          description: Configuration dict. For local storage, must contain 'base_path'
+            key with filesystem path.
+        is_active:
           type: boolean
-        isDefault:
+        is_default:
           type: boolean
-    PatchedStorageBucketRequest:
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedStorageBucket:
       type: object
       description: Serializer for StorageBucket model
       properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
         backend:
           type: string
           format: uuid
+        backend_name:
+          type: string
+          readOnly: true
         name:
           type: string
-          minLength: 1
           maxLength: 255
-        displayName:
+        display_name:
           type: string
-          minLength: 1
           maxLength: 100
         purpose:
-          enum:
-          - originals
-          - thumbnails
-          - exports
-          - temp
-          type: string
-          description: |-
-            * `originals` - Original Photos
-            * `thumbnails` - Thumbnails
-            * `exports` - Exported Images
-            * `temp` - Temporary Files
-          x-spec-enum-id: f58672a49176e9d8
-        isPublic:
+          $ref: '#/components/schemas/PurposeEnum'
+        is_public:
           type: boolean
-        pathPrefix:
+        path_prefix:
           type: string
           maxLength: 500
-        isActive:
+        is_active:
           type: boolean
-    PatchedUploadBatchRequest:
-      type: object
-      description: Serializer for UploadBatch model
-      properties:
-        name:
+        created_at:
           type: string
-          maxLength: 255
-        totalFiles:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        defaultKeywords:
-          type: array
-          items:
-            type: string
-            minLength: 1
-            maxLength: 100
-        defaultAlbum:
+          format: date-time
+          readOnly: true
+        updated_at:
           type: string
-          format: uuid
-          nullable: true
-    PatchedUserRequest:
-      type: object
-      description: Serializer for User model
-      properties:
-        username:
-          type: string
-          minLength: 1
-          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
-            only.
-          pattern: ^[\w.@+-]+$
-          maxLength: 150
-        email:
-          type: string
-          format: email
-          title: Email address
-          maxLength: 254
-        firstName:
-          type: string
-          maxLength: 150
-        lastName:
-          type: string
-          maxLength: 150
-        isStaff:
-          type: boolean
-          title: Staff status
-          description: Designates whether the user can log into this admin site.
-        isSuperuser:
-          type: boolean
-          title: Superuser status
-          description: Designates that this user has all permissions without explicitly
-            assigning them.
+          format: date-time
+          readOnly: true
     Person:
       type: object
       description: Serializer for Person model
@@ -3188,31 +2518,40 @@ components:
           type: string
           format: uuid
           readOnly: true
-        displayName:
+        display_name:
           type: string
           maxLength: 255
         aka: {}
         notes:
           type: string
-        faceCount:
+        face_count:
           type: string
           readOnly: true
-        assetCount:
+        asset_count:
           type: string
           readOnly: true
-        embeddingCentroid:
+        headshot_url:
+          type: string
+          readOnly: true
+        embedding_centroid:
           type: string
           nullable: true
-        createdAt:
+        created_at:
           type: string
           format: date-time
           readOnly: true
-        updatedAt:
+        updated_at:
           type: string
           format: date-time
           readOnly: true
       required:
-      - displayName
+      - asset_count
+      - created_at
+      - display_name
+      - face_count
+      - headshot_url
+      - id
+      - updated_at
     PersonMergeSuggestion:
       type: object
       description: Serializer for PersonMergeSuggestion model
@@ -3221,165 +2560,64 @@ components:
           type: string
           format: uuid
           readOnly: true
-        personA:
+        person_a:
           type: string
           format: uuid
-        personAName:
+        person_a_name:
           type: string
           readOnly: true
-        personB:
+        person_b:
           type: string
           format: uuid
-        personBName:
+        person_b_name:
           type: string
           readOnly: true
-        cosineSimilarity:
+        cosine_similarity:
           type: number
           format: double
-        confidenceScore:
+        confidence_score:
           type: number
           format: double
         status:
-          enum:
-          - open
-          - accepted
-          - rejected
-          type: string
-          description: |-
-            * `open` - Open
-            * `accepted` - Accepted
-            * `rejected` - Rejected
-          x-spec-enum-id: b53e807e421c50fd
-        reviewedBy:
+          $ref: '#/components/schemas/StatusEnum'
+        reviewed_by:
           type: integer
           nullable: true
-        reviewedAt:
+        reviewed_at:
           type: string
           format: date-time
           nullable: true
-        createdAt:
+        created_at:
           type: string
           format: date-time
           readOnly: true
       required:
-      - confidenceScore
-      - cosineSimilarity
-      - personA
-      - personB
-    PersonMergeSuggestionRequest:
-      type: object
-      description: Serializer for PersonMergeSuggestion model
-      properties:
-        personA:
-          type: string
-          format: uuid
-        personB:
-          type: string
-          format: uuid
-        cosineSimilarity:
-          type: number
-          format: double
-        confidenceScore:
-          type: number
-          format: double
-        status:
-          enum:
-          - open
-          - accepted
-          - rejected
-          type: string
-          description: |-
-            * `open` - Open
-            * `accepted` - Accepted
-            * `rejected` - Rejected
-          x-spec-enum-id: b53e807e421c50fd
-        reviewedBy:
-          type: integer
-          nullable: true
-        reviewedAt:
-          type: string
-          format: date-time
-          nullable: true
-      required:
-      - confidenceScore
-      - cosineSimilarity
-      - personA
-      - personB
-    PersonRequest:
-      type: object
-      description: Serializer for Person model
-      properties:
-        displayName:
-          type: string
-          minLength: 1
-          maxLength: 255
-        aka: {}
-        notes:
-          type: string
-        embeddingCentroid:
-          type: string
-          nullable: true
-      required:
-      - displayName
-    RegisterRequest:
-      type: object
-      description: Serializer for user registration
-      properties:
-        username:
-          type: string
-          minLength: 1
-          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
-            only.
-          pattern: ^[\w.@+-]+$
-          maxLength: 150
-        email:
-          type: string
-          format: email
-          title: Email address
-          maxLength: 254
-        password:
-          type: string
-          writeOnly: true
-          minLength: 6
-        confirmPassword:
-          type: string
-          writeOnly: true
-          minLength: 1
-        firstName:
-          type: string
-          maxLength: 150
-        lastName:
-          type: string
-          maxLength: 150
-      required:
-      - confirmPassword
-      - password
-      - username
-    SetupRequest:
-      type: object
-      description: Serializer for initial setup (first admin user)
-      properties:
-        username:
-          type: string
-          minLength: 1
-          maxLength: 150
-        email:
-          type: string
-          format: email
-          minLength: 1
-        password:
-          type: string
-          writeOnly: true
-          minLength: 6
-        confirmPassword:
-          type: string
-          writeOnly: true
-          minLength: 1
-      required:
-      - confirmPassword
-      - email
-      - password
-      - username
+      - confidence_score
+      - cosine_similarity
+      - created_at
+      - id
+      - person_a
+      - person_a_name
+      - person_b
+      - person_b_name
+    PurposeEnum:
+      enum:
+      - originals
+      - thumbnails
+      type: string
+      description: |-
+        * `originals` - Original Photos
+        * `thumbnails` - Thumbnails
+    StatusEnum:
+      enum:
+      - open
+      - accepted
+      - rejected
+      type: string
+      description: |-
+        * `open` - Open
+        * `accepted` - Accepted
+        * `rejected` - Rejected
     StorageBackend:
       type: object
       description: Serializer for StorageBackend model
@@ -3391,80 +2629,28 @@ components:
         name:
           type: string
           maxLength: 100
-        backendType:
-          enum:
-          - s3
-          - minio
-          - gcs
-          - azure
-          - local
-          type: string
-          description: |-
-            * `s3` - Amazon S3
-            * `minio` - MinIO
-            * `gcs` - Google Cloud Storage
-            * `azure` - Azure Blob Storage
-            * `local` - Local File System
-          x-spec-enum-id: cc127605a956c706
-        endpointUrl:
-          type: string
-          format: uri
-          maxLength: 200
-        region:
-          type: string
-          maxLength: 50
-        isActive:
+        backend_type:
+          $ref: '#/components/schemas/BackendTypeEnum'
+        config:
+          description: Configuration dict. For local storage, must contain 'base_path'
+            key with filesystem path.
+        is_active:
           type: boolean
-        isDefault:
+        is_default:
           type: boolean
-        createdAt:
+        created_at:
           type: string
           format: date-time
           readOnly: true
-        updatedAt:
+        updated_at:
           type: string
           format: date-time
           readOnly: true
       required:
-      - backendType
+      - created_at
+      - id
       - name
-    StorageBackendRequest:
-      type: object
-      description: Serializer for StorageBackend model
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 100
-        backendType:
-          enum:
-          - s3
-          - minio
-          - gcs
-          - azure
-          - local
-          type: string
-          description: |-
-            * `s3` - Amazon S3
-            * `minio` - MinIO
-            * `gcs` - Google Cloud Storage
-            * `azure` - Azure Blob Storage
-            * `local` - Local File System
-          x-spec-enum-id: cc127605a956c706
-        endpointUrl:
-          type: string
-          format: uri
-          maxLength: 200
-        region:
-          type: string
-          maxLength: 50
-        isActive:
-          type: boolean
-        isDefault:
-          type: boolean
-      required:
-      - backendType
-      - name
+      - updated_at
     StorageBucket:
       type: object
       description: Serializer for StorageBucket model
@@ -3476,192 +2662,40 @@ components:
         backend:
           type: string
           format: uuid
-        backendName:
-          type: string
-          readOnly: true
-        backendType:
+        backend_name:
           type: string
           readOnly: true
         name:
           type: string
           maxLength: 255
-        displayName:
+        display_name:
           type: string
           maxLength: 100
         purpose:
-          enum:
-          - originals
-          - thumbnails
-          - exports
-          - temp
-          type: string
-          description: |-
-            * `originals` - Original Photos
-            * `thumbnails` - Thumbnails
-            * `exports` - Exported Images
-            * `temp` - Temporary Files
-          x-spec-enum-id: f58672a49176e9d8
-        isPublic:
+          $ref: '#/components/schemas/PurposeEnum'
+        is_public:
           type: boolean
-        pathPrefix:
+        path_prefix:
           type: string
           maxLength: 500
-        isActive:
+        is_active:
           type: boolean
-        createdAt:
+        created_at:
           type: string
           format: date-time
           readOnly: true
-        updatedAt:
+        updated_at:
           type: string
           format: date-time
           readOnly: true
       required:
       - backend
-      - displayName
+      - backend_name
+      - created_at
+      - display_name
+      - id
       - name
-    StorageBucketRequest:
-      type: object
-      description: Serializer for StorageBucket model
-      properties:
-        backend:
-          type: string
-          format: uuid
-        name:
-          type: string
-          minLength: 1
-          maxLength: 255
-        displayName:
-          type: string
-          minLength: 1
-          maxLength: 100
-        purpose:
-          enum:
-          - originals
-          - thumbnails
-          - exports
-          - temp
-          type: string
-          description: |-
-            * `originals` - Original Photos
-            * `thumbnails` - Thumbnails
-            * `exports` - Exported Images
-            * `temp` - Temporary Files
-          x-spec-enum-id: f58672a49176e9d8
-        isPublic:
-          type: boolean
-        pathPrefix:
-          type: string
-          maxLength: 500
-        isActive:
-          type: boolean
-      required:
-      - backend
-      - displayName
-      - name
-    UploadBatch:
-      type: object
-      description: Serializer for UploadBatch model
-      properties:
-        id:
-          type: string
-          format: uuid
-          readOnly: true
-        name:
-          type: string
-          maxLength: 255
-        totalFiles:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        processedFiles:
-          type: integer
-          readOnly: true
-        failedFiles:
-          type: integer
-          readOnly: true
-        progressPercentage:
-          type: string
-          readOnly: true
-        defaultKeywords:
-          type: array
-          items:
-            type: string
-            maxLength: 100
-        defaultAlbum:
-          type: string
-          format: uuid
-          nullable: true
-        createdBy:
-          type: integer
-          readOnly: true
-        createdAt:
-          type: string
-          format: date-time
-          readOnly: true
-        updatedAt:
-          type: string
-          format: date-time
-          readOnly: true
-        completedAt:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-    UploadBatchRequest:
-      type: object
-      description: Serializer for UploadBatch model
-      properties:
-        name:
-          type: string
-          maxLength: 255
-        totalFiles:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        defaultKeywords:
-          type: array
-          items:
-            type: string
-            minLength: 1
-            maxLength: 100
-        defaultAlbum:
-          type: string
-          format: uuid
-          nullable: true
-    UserRequest:
-      type: object
-      description: Serializer for User model
-      properties:
-        username:
-          type: string
-          minLength: 1
-          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
-            only.
-          pattern: ^[\w.@+-]+$
-          maxLength: 150
-        email:
-          type: string
-          format: email
-          title: Email address
-          maxLength: 254
-        firstName:
-          type: string
-          maxLength: 150
-        lastName:
-          type: string
-          maxLength: 150
-        isStaff:
-          type: boolean
-          title: Staff status
-          description: Designates whether the user can log into this admin site.
-        isSuperuser:
-          type: boolean
-          title: Superuser status
-          description: Designates that this user has all permissions without explicitly
-            assigning them.
-      required:
-      - username
+      - updated_at
   securitySchemes:
     cookieAuth:
       type: apiKey
@@ -3672,24 +2706,3 @@ components:
       in: header
       name: Authorization
       description: Token-based authentication with required prefix "Token"
-tags:
-- name: Setup
-  description: Initial system setup and configuration
-- name: Authentication
-  description: User authentication and profile management
-- name: User Management
-  description: Admin user creation and management
-- name: Assets
-  description: Photo management and storage
-- name: Albums
-  description: Photo collections and organization
-- name: People
-  description: Face recognition and people management
-- name: Metadata
-  description: Photo metadata and search
-- name: Sharing
-  description: Photo sharing and access control
-- name: Upload
-  description: File upload and batch processing
-- name: Storage
-  description: Storage backend configuration

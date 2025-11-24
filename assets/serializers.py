@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Album, Asset, StorageBackend, StorageBucket, UploadBatch
+from .models import Album, Asset, StorageBackend, StorageBucket
 
 
 class StorageBackendSerializer(serializers.ModelSerializer):
@@ -12,8 +12,7 @@ class StorageBackendSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "backend_type",
-            "endpoint_url",
-            "region",
+            "config",
             "is_active",
             "is_default",
             "created_at",
@@ -26,7 +25,6 @@ class StorageBucketSerializer(serializers.ModelSerializer):
     """Serializer for StorageBucket model"""
 
     backend_name = serializers.CharField(source="backend.name", read_only=True)
-    backend_type = serializers.CharField(source="backend.backend_type", read_only=True)
 
     class Meta:
         model = StorageBucket
@@ -34,7 +32,6 @@ class StorageBucketSerializer(serializers.ModelSerializer):
             "id",
             "backend",
             "backend_name",
-            "backend_type",
             "name",
             "display_name",
             "purpose",
@@ -205,40 +202,3 @@ class AlbumSerializer(serializers.ModelSerializer):
 
     def get_photo_count(self, obj):
         return obj.assets.count()
-
-
-class UploadBatchSerializer(serializers.ModelSerializer):
-    """Serializer for UploadBatch model"""
-
-    progress_percentage = serializers.SerializerMethodField()
-
-    class Meta:
-        model = UploadBatch
-        fields = [
-            "id",
-            "name",
-            "total_files",
-            "processed_files",
-            "failed_files",
-            "progress_percentage",
-            "default_keywords",
-            "default_album",
-            "created_by",
-            "created_at",
-            "updated_at",
-            "completed_at",
-        ]
-        read_only_fields = [
-            "id",
-            "processed_files",
-            "failed_files",
-            "created_by",
-            "created_at",
-            "updated_at",
-            "completed_at",
-        ]
-
-    def get_progress_percentage(self, obj):
-        if obj.total_files == 0:
-            return 0.0
-        return (obj.processed_files / obj.total_files) * 100
