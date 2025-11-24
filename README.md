@@ -108,6 +108,53 @@ curl -X POST http://localhost:8000/api/storage/setup/ \
 
 The current implementation uses a single storage location. Support for multiple "libraries" (different drives/locations) can be added later by creating additional storage backends via the advanced `/api/storage-backends/` API.
 
+## Background Tasks with Celery
+
+OpenPhotobox uses Celery for asynchronous task processing (face detection, metadata extraction, etc.) and Celery Beat for periodic tasks (revalidating face assignments).
+
+### Running with Docker Compose
+
+```bash
+docker-compose up
+```
+
+This starts:
+- `backend`: Django web server
+- `worker`: Celery worker (processes queued tasks)
+- `beat`: Celery Beat scheduler (triggers periodic tasks)
+- `db`, `redis`, `minio`: Supporting services
+
+### Running Locally
+
+You need to run THREE services in separate terminals:
+
+**Terminal 1 - Django Server:**
+```bash
+python manage.py runserver
+```
+
+**Terminal 2 - Celery Worker:**
+```bash
+# Default worker (all queues)
+python start_worker.py
+
+# Or specialized workers:
+python start_worker.py --preset metadata  # For EXIF/metadata processing
+python start_worker.py --preset ai        # For face detection & CLIP
+```
+
+**Terminal 3 - Celery Beat (Required for periodic tasks):**
+```bash
+python start_beat.py
+```
+
+**Important:** Without Celery Beat running, periodic tasks like `revalidate_unconfirmed_faces` won't execute automatically.
+
+### Periodic Tasks
+
+The following tasks run automatically when Beat is running:
+- **revalidate_unconfirmed_faces**: Runs every 15 minutes to improve face assignments as users confirm faces
+
 ## Development Tooling
 
 This project uses Ruff (lint + format), Mypy (static typing), and Pre-Commit hooks for consistent code quality.

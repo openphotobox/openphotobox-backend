@@ -260,6 +260,9 @@ def _extract_exif_data(image_data: BytesIO) -> Dict[str, Any]:
                     except Exception:
                         safe_value = _convert_pil_value(value)
                     exif_data[tag] = safe_value
+                else:
+                    # Add all other EXIF tags
+                    exif_data[tag] = _convert_pil_value(value)
 
         # Final sanitation to ensure JSON-serializable values recursively
         exif_data = _sanitize_for_json(exif_data)

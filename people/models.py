@@ -69,6 +69,11 @@ class Face(models.Model):
     detection_model = models.CharField(max_length=100, default="InsightFace")
     detection_confidence = models.FloatField(default=0.0)
 
+    # Confirmation tracking
+    confirmed = models.BooleanField(default=False)
+    confirmed_by = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="confirmed_faces")
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -80,6 +85,8 @@ class Face(models.Model):
             models.Index(fields=["person"]),
             models.Index(fields=["quality"]),
             models.Index(fields=["-detection_confidence"]),
+            models.Index(fields=["confirmed"]),
+            models.Index(fields=["person", "confirmed"]),
         ]
         ordering = ["-quality", "-detection_confidence"]
 

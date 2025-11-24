@@ -34,6 +34,18 @@ app.conf.update(
     worker_disable_rate_limits=True,
 )
 
+# Celery Beat schedule for periodic tasks
+app.conf.beat_schedule = {
+    "revalidate-unconfirmed-faces": {
+        "task": "people.tasks.revalidate_unconfirmed_faces",
+        "schedule": 300.0,  # Every 5 minutes
+    },
+    "assign-unassigned-faces": {
+        "task": "people.tasks.assign_faces_knn",
+        "schedule": 600.0,  # Every 5 minutes
+    },
+}
+
 
 @app.task(bind=True)
 def debug_task(self):

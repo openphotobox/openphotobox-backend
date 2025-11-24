@@ -273,7 +273,10 @@ OPENPHOTOBOX = {
     "FACE_SEARCH_MAX_DISTANCE": 0.46,  # cosine distance cutoff (slightly relaxed)
     "FACE_SEARCH_MIN_FACES": 4,  # neighbors required to be core (more than 3)
     # Allow KNN to create a new person when enough neighbors are present
-    "FACE_KNN_ALLOW_PERSON_CREATION": True,
+    "FACE_KNN_ALLOW_PERSON_CREATION": False,
+    # Face revalidation parameters
+    "FACE_REVALIDATION_BATCH_SIZE": 1000,  # Max faces to process per revalidation run
+    "FACE_REVALIDATION_MIN_IMPROVEMENT": 0.1,  # Min similarity improvement to trigger reassignment
     "CLIP_MODEL": "ViT-B/32",
     # Default timezone to apply to naive capture dates (EXIF without TZ, scans, etc.)
     "DEFAULT_CAPTURE_TZ": os.environ.get("DEFAULT_CAPTURE_TZ", "America/New_York"),

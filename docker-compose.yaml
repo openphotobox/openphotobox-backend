@@ -60,6 +60,22 @@ services:
       - ./data:/data
     command: python start_worker.py
 
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      - backend
+      - db
+      - redis
+      - minio
+    volumes:
+      - .:/app
+      - ./data:/data
+    command: celery -A openphotobox_backend beat --loglevel=info
+
 volumes:
   db-data:
   minio-data:

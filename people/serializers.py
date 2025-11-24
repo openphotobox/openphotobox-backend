@@ -11,6 +11,7 @@ class PersonSerializer(serializers.ModelSerializer):
     """Serializer for Person model"""
 
     face_count = serializers.SerializerMethodField()
+    candidate_count = serializers.SerializerMethodField()
     asset_count = serializers.SerializerMethodField()
     headshot_url = serializers.SerializerMethodField()
 
@@ -22,17 +23,22 @@ class PersonSerializer(serializers.ModelSerializer):
             "aka",
             "notes",
             "face_count",
+            "candidate_count",
             "asset_count",
             "headshot_url",
             "embedding_centroid",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "face_count", "asset_count", "headshot_url", "created_at", "updated_at"]
+        read_only_fields = ["id", "face_count", "candidate_count", "asset_count", "headshot_url", "created_at", "updated_at"]
 
     def get_face_count(self, obj):
         """Get the number of faces for this person."""
         return obj.faces.count()
+
+    def get_candidate_count(self, obj):
+        """Get the number of unconfirmed (candidate) faces for this person."""
+        return obj.faces.filter(confirmed=False).count()
 
     def get_asset_count(self, obj):
         """Get the number of unique assets this person appears in."""
@@ -67,6 +73,7 @@ class FaceSerializer(serializers.ModelSerializer):
     asset_id = serializers.CharField(source="asset.id", read_only=True)
     thumbnail_url = serializers.SerializerMethodField()
     person_headshot_url = serializers.SerializerMethodField()
+    confirmed_by_username = serializers.CharField(source="confirmed_by.username", read_only=True)
 
     class Meta:
         model = Face
@@ -86,10 +93,14 @@ class FaceSerializer(serializers.ModelSerializer):
             "thumbnail_url",
             "person_headshot_url",
             "detection_model",
+            "confirmed",
+            "confirmed_by",
+            "confirmed_by_username",
+            "confirmed_at",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "asset_id", "person_name", "created_at", "updated_at"]
+        read_only_fields = ["id", "asset_id", "person_name", "confirmed_by_username", "created_at", "updated_at"]
 
     def get_thumbnail_url(self, obj):
         try:
@@ -178,3 +189,11 @@ class ManualFaceCreateSerializer(serializers.Serializer):
     h = serializers.FloatField(min_value=0.0, max_value=1.0)
     # Optional person assignment
     person_id = serializers.UUIDField(required=False, allow_null=True)
+
+
+class FaceConfirmationSerializer(serializers.Serializer):
+    """Serializer for bulk face confirmation requests"""
+
+    face_ids = serializers.ListField(
+        child=serializers.UUIDField(), min_length=1, help_text="List of face IDs to confirm"
+    )

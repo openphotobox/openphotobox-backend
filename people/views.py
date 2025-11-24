@@ -6,6 +6,7 @@ import numpy as np
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Count, Q
+from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -17,6 +18,7 @@ from openphotobox_backend.pagination import AssetCursorPagination
 from .models import Face, Person, PersonMergeSuggestion
 from .serializers import (
     FaceAssignmentSerializer,
+    FaceConfirmationSerializer,
     FaceSerializer,
     FaceUnassignmentSerializer,
     ManualFaceCreateSerializer,
@@ -150,6 +152,30 @@ class PersonViewSet(viewsets.ModelViewSet):
         }
         return self.merge(request, pk=str(data["target_person_id"]))
 
+    @action(detail=True, methods=["get"], url_path="candidate-faces")
+    def candidate_faces(self, request, pk=None):
+        """Get unconfirmed (candidate) faces for a person.
+        These are faces that were auto-assigned but haven't been confirmed by a user.
+        """
+        try:
+            person = Person.objects.get(id=pk)
+        except Person.DoesNotExist:
+            return Response({"detail": "Person not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Get unconfirmed faces for this person
+        candidate_faces = Face.objects.filter(person=person, confirmed=False).select_related("asset").order_by(
+            "-quality", "-detection_confidence", "-created_at"
+        )
+
+        # Paginate if needed
+        page = self.paginate_queryset(candidate_faces)
+        if page is not None:
+            serializer = FaceSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = FaceSerializer(candidate_faces, many=True)
+        return Response(serializer.data)
+
 
 class FaceViewSet(viewsets.ModelViewSet):
     """ViewSet for managing face detection results."""
@@ -182,8 +208,13 @@ class FaceViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Person not found"}, status=status.HTTP_404_NOT_FOUND)
 
         with transaction.atomic():
-            # Assign faces
-            updated = Face.objects.filter(id__in=face_ids).update(person=person)
+            # Assign faces and mark as confirmed (manual assignment)
+            updated = Face.objects.filter(id__in=face_ids).update(
+                person=person,
+                confirmed=True,
+                confirmed_by=request.user,
+                confirmed_at=timezone.now()
+            )
             # Recompute centroid and counts if any faces assigned
             faces_qs = Face.objects.filter(person=person)
             if faces_qs.exists():
@@ -227,8 +258,13 @@ class FaceViewSet(viewsets.ModelViewSet):
             affected_person_ids = set(
                 Face.objects.filter(id__in=face_ids, person__isnull=False).values_list("person_id", flat=True)
             )
-            # Clear person links
-            updated = Face.objects.filter(id__in=face_ids).update(person=None)
+            # Clear person links and reset confirmation (manual unassignment)
+            updated = Face.objects.filter(id__in=face_ids).update(
+                person=None,
+                confirmed=False,
+                confirmed_by=None,
+                confirmed_at=None
+            )
 
             # Recompute centroid, counts and headshot for affected persons
             for pid in affected_person_ids:
@@ -248,6 +284,33 @@ class FaceViewSet(viewsets.ModelViewSet):
                     person.embedding_count = 0
                     person.headshot_face = None
                 person.save()
+
+        return Response({"updated": updated}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["post"], url_path="bulk-confirm")
+    def bulk_confirm(self, request):
+        """Confirm one or more faces (mark as confirmed by user).
+        Body: { face_ids: [uuid,...] }
+        """
+        serializer = FaceConfirmationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        face_ids = serializer.validated_data["face_ids"]
+
+        with transaction.atomic():
+            # Mark faces as confirmed by current user
+            updated = Face.objects.filter(id__in=face_ids).update(
+                confirmed=True,
+                confirmed_by=request.user,
+                confirmed_at=timezone.now()
+            )
+
+            # Trigger revalidation after confirming faces to improve other assignments
+            try:
+                from .tasks import revalidate_unconfirmed_faces
+                # Schedule with small delay to batch multiple confirmations
+                revalidate_unconfirmed_faces.apply_async(countdown=30)
+            except Exception:
+                pass  # Non-critical, can be manually triggered
 
         return Response({"updated": updated}, status=status.HTTP_200_OK)
 
@@ -277,6 +340,7 @@ class FaceViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Asset not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # Create face with placeholder embedding and quality; real embedding computed async
+        # Mark as confirmed if assigned to a person (manual assignment)
         face = Face.objects.create(
             asset=asset,
             person_id=person_id,
@@ -288,6 +352,9 @@ class FaceViewSet(viewsets.ModelViewSet):
             quality=0.0,
             detection_model="manual",
             detection_confidence=1.0,
+            confirmed=bool(person_id),
+            confirmed_by=request.user if person_id else None,
+            confirmed_at=timezone.now() if person_id else None,
         )
 
         # Compute embedding synchronously so assignment UI has similarity immediately

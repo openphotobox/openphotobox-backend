@@ -56,6 +56,7 @@ class AssetSerializer(serializers.ModelSerializer):
     # Thumbnail URLs for different sizes
     thumbnail_url = serializers.SerializerMethodField()
     thumbnail_urls = serializers.SerializerMethodField()
+    preview_url = serializers.SerializerMethodField()
     original_url = serializers.CharField(read_only=True)
 
     # Include related metadata
@@ -82,6 +83,7 @@ class AssetSerializer(serializers.ModelSerializer):
             "phash",
             "thumbnail_url",
             "thumbnail_urls",
+            "preview_url",
             "original_url",
             "metadata",
             "faces",
@@ -96,6 +98,7 @@ class AssetSerializer(serializers.ModelSerializer):
             "keyword_names",
             "thumbnail_url",
             "thumbnail_urls",
+            "preview_url",
             "original_url",
             "metadata",
             "faces",
@@ -105,14 +108,10 @@ class AssetSerializer(serializers.ModelSerializer):
 
     def get_thumbnail_url(self, obj):
         """Get the best available thumbnail URL (prefer medium size)"""
-        # Try to get medium thumbnail first, then fall back to others
+        # Try to get medium thumbnail first, then fall back to small
         thumbnail = obj.thumbnails.filter(is_ready=True, size="md").first()
         if not thumbnail:
             thumbnail = obj.thumbnails.filter(is_ready=True, size="sm").first()
-        if not thumbnail:
-            thumbnail = obj.thumbnails.filter(is_ready=True, size="lg").first()
-        if not thumbnail:
-            thumbnail = obj.thumbnails.filter(is_ready=True, size="xs").first()
 
         if thumbnail:
             return thumbnail.storage_url
@@ -124,6 +123,14 @@ class AssetSerializer(serializers.ModelSerializer):
         """Get all available thumbnail URLs by size"""
         thumbnails = obj.thumbnails.filter(is_ready=True)
         return {thumbnail.size: thumbnail.storage_url for thumbnail in thumbnails}
+
+    def get_preview_url(self, obj):
+        """Get the preview image URL for fullscreen viewing (2048px)"""
+        preview = obj.thumbnails.filter(is_ready=True, size="preview").first()
+        if preview:
+            return preview.storage_url
+        # Fallback to original if preview not available
+        return obj.storage_url
 
     def get_original_url(self, obj):
         """Get the original full-size image URL"""
@@ -158,6 +165,7 @@ class AssetGallerySerializer(serializers.ModelSerializer):
     """
 
     thumbnail_url = serializers.SerializerMethodField()
+    preview_url = serializers.SerializerMethodField()
     original_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -169,6 +177,7 @@ class AssetGallerySerializer(serializers.ModelSerializer):
             "taken_at",
             "created_at",
             "thumbnail_url",
+            "preview_url",
             "original_url",
             "storage_url",
             "mime_type",
@@ -180,11 +189,11 @@ class AssetGallerySerializer(serializers.ModelSerializer):
         thumbnail = obj.thumbnails.filter(is_ready=True, size="md").first()
         if not thumbnail:
             thumbnail = obj.thumbnails.filter(is_ready=True, size="sm").first()
-        if not thumbnail:
-            thumbnail = obj.thumbnails.filter(is_ready=True, size="lg").first()
-        if not thumbnail:
-            thumbnail = obj.thumbnails.filter(is_ready=True, size="xs").first()
         return thumbnail.storage_url if thumbnail else obj.storage_url
+
+    def get_preview_url(self, obj):
+        preview = obj.thumbnails.filter(is_ready=True, size="preview").first()
+        return preview.storage_url if preview else obj.storage_url
 
     def get_original_url(self, obj):
         return obj.storage_url

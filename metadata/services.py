@@ -1,6 +1,8 @@
 import threading
 
 import numpy as np
+import torch  # Import torch first to avoid circular import issues
+import torchvision  # Import torchvision before open_clip
 
 _clip_lock = threading.Lock()
 _clip_model = None
@@ -41,7 +43,6 @@ def embed_image_bytes(image_bytes: bytes) -> np.ndarray:
     """Compute an L2-normalized CLIP image embedding (512-d float32) from raw bytes."""
     import io
 
-    import torch
     from PIL import Image
 
     model, preprocess, _ = get_clip()
@@ -57,8 +58,6 @@ def embed_image_bytes(image_bytes: bytes) -> np.ndarray:
 
 def embed_text(query: str) -> np.ndarray:
     """Compute an L2-normalized CLIP text embedding (512-d float32) for the given query."""
-    import torch
-
     model, _, tokenizer = get_clip()
     tokens = tokenizer([query])
     with torch.no_grad():

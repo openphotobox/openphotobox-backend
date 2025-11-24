@@ -211,15 +211,14 @@ class AssetThumbnail(models.Model):
     """
 
     THUMBNAIL_SIZES = [
-        ("xs", "Extra Small (150px)"),
         ("sm", "Small (300px)"),
         ("md", "Medium (600px)"),
-        ("lg", "Large (1200px)"),
+        ("preview", "Preview (2048px)"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     asset = models.ForeignKey(Asset, on_delete=models.CASCADE, related_name="thumbnails")
-    size = models.CharField(max_length=2, choices=THUMBNAIL_SIZES)
+    size = models.CharField(max_length=10, choices=THUMBNAIL_SIZES)
 
     # Storage information
     storage_bucket = models.ForeignKey(StorageBucket, on_delete=models.CASCADE, related_name="thumbnails")
@@ -261,9 +260,8 @@ class AssetThumbnail(models.Model):
     def get_size_pixels(cls, size):
         """Get the pixel size for a thumbnail size."""
         size_map = {
-            "xs": 150,
             "sm": 300,
             "md": 600,
-            "lg": 1200,
+            "preview": 2048,
         }
         return size_map.get(size, 300)

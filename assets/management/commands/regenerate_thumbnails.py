@@ -19,8 +19,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--sizes",
             nargs="+",
-            choices=["xs", "sm", "md", "lg"],
-            default=["xs", "sm", "md", "lg"],
+            choices=["sm", "md", "preview"],
+            default=["sm", "md", "preview"],
             help="Thumbnail sizes to generate (default: all sizes)",
         )
         parser.add_argument("--force", action="store_true", help="Force regeneration even if thumbnails already exist")
@@ -147,6 +147,6 @@ class Command(BaseCommand):
         # Show thumbnail size information
         self.stdout.write("")
         self.stdout.write("Thumbnail sizes:")
-        size_info = {"xs": "150px (Extra Small)", "sm": "300px (Small)", "md": "600px (Medium)", "lg": "1200px (Large)"}
+        size_info = {"sm": "300px (Small)", "md": "600px (Medium)", "preview": "2048px (Preview)"}
         for size in sizes:
             self.stdout.write(f"  - {size}: {size_info[size]}")

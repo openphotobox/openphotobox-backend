@@ -35,7 +35,7 @@ def generate_asset_thumbnails(self, asset_id: str, sizes: list[str] | None = Non
             return {"success": False, "error": "Asset not found"}
 
         if sizes is None:
-            sizes = ["xs", "sm", "md", "lg"]
+            sizes = ["sm", "md", "preview"]
 
         # Download original image
         image_data = _download_asset_image(asset)
@@ -191,9 +191,11 @@ def _generate_single_thumbnail(
         # Generate storage key
         file_key = f"assets/{asset.id}/{size}.jpg"
 
-        # Save thumbnail to memory
+        # Save thumbnail to memory with appropriate quality
+        # Use quality 90 for preview size, 85 for smaller thumbnails
+        quality = 90 if size == "preview" else 85
         thumbnail_data = BytesIO()
-        thumbnail_image.save(thumbnail_data, format="JPEG", quality=85, optimize=True)
+        thumbnail_image.save(thumbnail_data, format="JPEG", quality=quality, optimize=True)
         thumbnail_size = thumbnail_data.tell()
         thumbnail_data.seek(0)
 
