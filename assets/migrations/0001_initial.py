@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -16,80 +15,138 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='StorageBackend',
+            name="StorageBackend",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('name', models.CharField(max_length=100, unique=True)),
-                ('backend_type', models.CharField(choices=[('local', 'Local File System')], default='local', max_length=10)),
-                ('config', models.JSONField(blank=True, default=dict, help_text="Configuration dict. For local storage, must contain 'base_path' key with filesystem path.")),
-                ('is_active', models.BooleanField(default=True)),
-                ('is_default', models.BooleanField(default=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ("name", models.CharField(max_length=100, unique=True)),
+                (
+                    "backend_type",
+                    models.CharField(choices=[("local", "Local File System")], default="local", max_length=10),
+                ),
+                (
+                    "config",
+                    models.JSONField(
+                        blank=True,
+                        default=dict,
+                        help_text="Configuration dict. For local storage, must contain 'base_path' key with filesystem path.",
+                    ),
+                ),
+                ("is_active", models.BooleanField(default=True)),
+                ("is_default", models.BooleanField(default=False)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'db_table': 'storage_backends',
-                'ordering': ['name'],
+                "db_table": "storage_backends",
+                "ordering": ["name"],
             },
         ),
         migrations.CreateModel(
-            name='StorageBucket',
+            name="StorageBucket",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('name', models.CharField(max_length=255)),
-                ('display_name', models.CharField(max_length=100)),
-                ('purpose', models.CharField(choices=[('originals', 'Original Photos'), ('thumbnails', 'Thumbnails')], default='originals', max_length=20)),
-                ('is_public', models.BooleanField(default=False)),
-                ('path_prefix', models.CharField(blank=True, max_length=500)),
-                ('is_active', models.BooleanField(default=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('backend', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='buckets', to='assets.storagebackend')),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ("name", models.CharField(max_length=255)),
+                ("display_name", models.CharField(max_length=100)),
+                (
+                    "purpose",
+                    models.CharField(
+                        choices=[("originals", "Original Photos"), ("thumbnails", "Thumbnails")],
+                        default="originals",
+                        max_length=20,
+                    ),
+                ),
+                ("is_public", models.BooleanField(default=False)),
+                ("path_prefix", models.CharField(blank=True, max_length=500)),
+                ("is_active", models.BooleanField(default=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "backend",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="buckets", to="assets.storagebackend"
+                    ),
+                ),
             ],
             options={
-                'db_table': 'storage_buckets',
-                'ordering': ['backend', 'purpose', 'display_name'],
-                'unique_together': {('backend', 'name')},
+                "db_table": "storage_buckets",
+                "ordering": ["backend", "purpose", "display_name"],
+                "unique_together": {("backend", "name")},
             },
         ),
         migrations.CreateModel(
-            name='Asset',
+            name="Asset",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('sha256', models.CharField(db_index=True, max_length=64, unique=True)),
-                ('storage_key', models.CharField(max_length=1024)),
-                ('mime_type', models.CharField(max_length=100)),
-                ('width', models.PositiveIntegerField()),
-                ('height', models.PositiveIntegerField()),
-                ('taken_at', models.DateTimeField(blank=True, null=True)),
-                ('description', models.TextField(blank=True, help_text='User-provided description or caption for this photo')),
-                ('phash', models.CharField(blank=True, db_index=True, max_length=16)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('owner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='owned_assets', to=settings.AUTH_USER_MODEL)),
-                ('storage_bucket', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='assets', to='assets.storagebucket')),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ("sha256", models.CharField(db_index=True, max_length=64, unique=True)),
+                ("storage_key", models.CharField(max_length=1024)),
+                ("mime_type", models.CharField(max_length=100)),
+                ("width", models.PositiveIntegerField()),
+                ("height", models.PositiveIntegerField()),
+                ("taken_at", models.DateTimeField(blank=True, null=True)),
+                (
+                    "description",
+                    models.TextField(blank=True, help_text="User-provided description or caption for this photo"),
+                ),
+                ("phash", models.CharField(blank=True, db_index=True, max_length=16)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "owner",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="owned_assets",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "storage_bucket",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, related_name="assets", to="assets.storagebucket"
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='AssetThumbnail',
+            name="AssetThumbnail",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('size', models.CharField(choices=[('sm', 'Small (300px)'), ('md', 'Medium (600px)'), ('preview', 'Preview (2048px)')], max_length=10)),
-                ('storage_key', models.CharField(max_length=1024)),
-                ('width', models.PositiveIntegerField()),
-                ('height', models.PositiveIntegerField()),
-                ('file_size', models.PositiveIntegerField()),
-                ('is_ready', models.BooleanField(default=False)),
-                ('generated_at', models.DateTimeField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('asset', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='thumbnails', to='assets.asset')),
-                ('storage_bucket', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='thumbnails', to='assets.storagebucket')),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                (
+                    "size",
+                    models.CharField(
+                        choices=[("sm", "Small (300px)"), ("md", "Medium (600px)"), ("preview", "Preview (2048px)")],
+                        max_length=10,
+                    ),
+                ),
+                ("storage_key", models.CharField(max_length=1024)),
+                ("width", models.PositiveIntegerField()),
+                ("height", models.PositiveIntegerField()),
+                ("file_size", models.PositiveIntegerField()),
+                ("is_ready", models.BooleanField(default=False)),
+                ("generated_at", models.DateTimeField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "asset",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="thumbnails", to="assets.asset"
+                    ),
+                ),
+                (
+                    "storage_bucket",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="thumbnails",
+                        to="assets.storagebucket",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['size'],
-                'indexes': [models.Index(fields=['asset', 'size'], name='assets_asse_asset_i_b204e6_idx'), models.Index(fields=['is_ready'], name='assets_asse_is_read_a7bbd7_idx')],
-                'unique_together': {('asset', 'size')},
+                "ordering": ["size"],
+                "indexes": [
+                    models.Index(fields=["asset", "size"], name="assets_asse_asset_i_b204e6_idx"),
+                    models.Index(fields=["is_ready"], name="assets_asse_is_read_a7bbd7_idx"),
+                ],
+                "unique_together": {("asset", "size")},
             },
         ),
     ]

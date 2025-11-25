@@ -52,7 +52,7 @@ class AssetSerializer(serializers.ModelSerializer):
     storage_url = serializers.CharField(read_only=True)
     storage_path = serializers.CharField(read_only=True)
     keyword_names = serializers.ListField(child=serializers.CharField(), read_only=True)
-    
+
     # Owner information
     owner_username = serializers.CharField(source="owner.username", read_only=True)
     can_edit = serializers.SerializerMethodField()
@@ -132,7 +132,7 @@ class AssetSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-    
+
     def get_can_edit(self, obj):
         """Check if current user can edit this asset"""
         request = self.context.get("request")

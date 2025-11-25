@@ -42,17 +42,15 @@ class PersonViewSet(viewsets.ModelViewSet):
         from albums.permissions import get_accessible_assets
 
         accessible_assets = get_accessible_assets(self.request.user)
-        
+
         # Only show people who have faces in accessible assets
-        queryset = super().get_queryset().filter(
-            faces__asset__in=accessible_assets
-        ).distinct()
-        
+        queryset = super().get_queryset().filter(faces__asset__in=accessible_assets).distinct()
+
         # Annotate with accessible face count (not total face count)
         queryset = queryset.annotate(
             face_count=Count("faces", filter=Q(faces__asset__in=accessible_assets), distinct=True)
         )
-        
+
         search = self.request.query_params.get("search")
         if search:
             queryset = queryset.filter(Q(display_name__icontains=search) | Q(aka__icontains=search))
@@ -210,7 +208,7 @@ class FaceViewSet(viewsets.ModelViewSet):
 
         accessible_assets = get_accessible_assets(self.request.user)
         queryset = super().get_queryset().filter(asset__in=accessible_assets)
-        
+
         person_id = self.request.query_params.get("person")
         if person_id:
             queryset = queryset.filter(person_id=person_id)
@@ -261,12 +259,14 @@ class FaceViewSet(viewsets.ModelViewSet):
         from albums.permissions import get_accessible_assets
 
         accessible_assets = get_accessible_assets(request.user)
-        
+
         # Find accessible asset ids that have any face with person null
-        asset_ids = Face.objects.filter(
-            person__isnull=True, asset__in=accessible_assets
-        ).values_list("asset_id", flat=True).distinct()
-        
+        asset_ids = (
+            Face.objects.filter(person__isnull=True, asset__in=accessible_assets)
+            .values_list("asset_id", flat=True)
+            .distinct()
+        )
+
         qs = Asset.objects.filter(id__in=asset_ids).prefetch_related("thumbnails").order_by("-taken_at", "-created_at")
 
         paginator = AssetCursorPagination()
@@ -487,22 +487,22 @@ class FaceViewSet(viewsets.ModelViewSet):
         from albums.permissions import get_accessible_assets
 
         accessible_assets = get_accessible_assets(request.user)
-        
-        persons_qs = Person.objects.filter(
-            faces__asset__in=accessible_assets
-        ).distinct().annotate(
-            face_count=Count("faces", filter=Q(faces__asset__in=accessible_assets), distinct=True)
+
+        persons_qs = (
+            Person.objects.filter(faces__asset__in=accessible_assets)
+            .distinct()
+            .annotate(face_count=Count("faces", filter=Q(faces__asset__in=accessible_assets), distinct=True))
         )
-        
+
         candidates = []
         for person in persons_qs:
             best_sim = -1.0
 
             # Compare against up to N prototypes (best quality faces) for this person
             # Only use prototypes from accessible assets
-            proto_qs = Face.objects.filter(
-                person=person, asset__in=accessible_assets
-            ).order_by("-quality", "-detection_confidence", "-created_at")
+            proto_qs = Face.objects.filter(person=person, asset__in=accessible_assets).order_by(
+                "-quality", "-detection_confidence", "-created_at"
+            )
             if max_prototypes > 0:
                 proto_qs = proto_qs[:max_prototypes]
             # Only compute similarity if the target has a valid embedding

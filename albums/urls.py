@@ -9,4 +9,3 @@ router.register(r"albums", AlbumViewSet, basename="album")
 urlpatterns = [
     path("", include(router.urls)),
 ]
-

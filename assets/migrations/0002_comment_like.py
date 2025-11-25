@@ -7,42 +7,73 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('assets', '0001_initial'),
+        ("assets", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Comment',
+            name="Comment",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('content', models.TextField()),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('asset', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='comments', to='assets.asset')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='asset_comments', to=settings.AUTH_USER_MODEL)),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ("content", models.TextField()),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "asset",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="comments", to="assets.asset"
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="asset_comments",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'db_table': 'asset_comments',
-                'ordering': ['created_at'],
-                'indexes': [models.Index(fields=['asset'], name='asset_comme_asset_i_2b4798_idx'), models.Index(fields=['user'], name='asset_comme_user_id_72ed3f_idx'), models.Index(fields=['created_at'], name='asset_comme_created_83e0ac_idx')],
+                "db_table": "asset_comments",
+                "ordering": ["created_at"],
+                "indexes": [
+                    models.Index(fields=["asset"], name="asset_comme_asset_i_2b4798_idx"),
+                    models.Index(fields=["user"], name="asset_comme_user_id_72ed3f_idx"),
+                    models.Index(fields=["created_at"], name="asset_comme_created_83e0ac_idx"),
+                ],
             },
         ),
         migrations.CreateModel(
-            name='Like',
+            name="Like",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('asset', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='likes', to='assets.asset')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='liked_assets', to=settings.AUTH_USER_MODEL)),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "asset",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="likes", to="assets.asset"
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="liked_assets",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'db_table': 'asset_likes',
-                'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['asset'], name='asset_likes_asset_i_e1a84f_idx'), models.Index(fields=['user'], name='asset_likes_user_id_082603_idx'), models.Index(fields=['created_at'], name='asset_likes_created_8d1f59_idx')],
-                'unique_together': {('asset', 'user')},
+                "db_table": "asset_likes",
+                "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(fields=["asset"], name="asset_likes_asset_i_e1a84f_idx"),
+                    models.Index(fields=["user"], name="asset_likes_user_id_082603_idx"),
+                    models.Index(fields=["created_at"], name="asset_likes_created_8d1f59_idx"),
+                ],
+                "unique_together": {("asset", "user")},
             },
         ),
     ]

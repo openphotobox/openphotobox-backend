@@ -7,89 +7,128 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('assets', '0001_initial'),
+        ("assets", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Album',
+            name="Album",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('title', models.CharField(max_length=255)),
-                ('description', models.TextField(blank=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('cover_asset', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='cover_for_albums', to='assets.asset')),
-                ('owner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='owned_albums', to=settings.AUTH_USER_MODEL)),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ("title", models.CharField(max_length=255)),
+                ("description", models.TextField(blank=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "cover_asset",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="cover_for_albums",
+                        to="assets.asset",
+                    ),
+                ),
+                (
+                    "owner",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="owned_albums",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'db_table': 'albums',
-                'ordering': ['title'],
+                "db_table": "albums",
+                "ordering": ["title"],
             },
         ),
         migrations.CreateModel(
-            name='AlbumAsset',
+            name="AlbumAsset",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('order', models.PositiveIntegerField(default=0)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('album', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='albums.album')),
-                ('asset', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='assets.asset')),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ("order", models.PositiveIntegerField(default=0)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("album", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="albums.album")),
+                ("asset", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="assets.asset")),
             ],
             options={
-                'db_table': 'album_assets',
-                'ordering': ['order', 'created_at'],
-                'unique_together': {('album', 'asset')},
+                "db_table": "album_assets",
+                "ordering": ["order", "created_at"],
+                "unique_together": {("album", "asset")},
             },
         ),
         migrations.AddField(
-            model_name='album',
-            name='assets',
-            field=models.ManyToManyField(related_name='albums', through='albums.AlbumAsset', to='assets.asset'),
+            model_name="album",
+            name="assets",
+            field=models.ManyToManyField(related_name="albums", through="albums.AlbumAsset", to="assets.asset"),
         ),
         migrations.CreateModel(
-            name='AlbumShare',
+            name="AlbumShare",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('permission_level', models.CharField(choices=[('view', 'View'), ('contribute', 'Contribute')], default='view', max_length=20)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('album', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='shares', to='albums.album')),
-                ('shared_by', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='created_shares', to=settings.AUTH_USER_MODEL)),
-                ('shared_with', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='shared_albums', to=settings.AUTH_USER_MODEL)),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                (
+                    "permission_level",
+                    models.CharField(
+                        choices=[("view", "View"), ("contribute", "Contribute")], default="view", max_length=20
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "album",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="shares", to="albums.album"
+                    ),
+                ),
+                (
+                    "shared_by",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="created_shares",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "shared_with",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="shared_albums",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'db_table': 'album_shares',
-                'ordering': ['-created_at'],
+                "db_table": "album_shares",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.AddIndex(
-            model_name='album',
-            index=models.Index(fields=['owner'], name='albums_owner_i_6d8db8_idx'),
+            model_name="album",
+            index=models.Index(fields=["owner"], name="albums_owner_i_6d8db8_idx"),
         ),
         migrations.AddIndex(
-            model_name='album',
-            index=models.Index(fields=['created_at'], name='albums_created_51c339_idx'),
+            model_name="album",
+            index=models.Index(fields=["created_at"], name="albums_created_51c339_idx"),
         ),
         migrations.AddIndex(
-            model_name='albumshare',
-            index=models.Index(fields=['album'], name='album_share_album_i_b3786d_idx'),
+            model_name="albumshare",
+            index=models.Index(fields=["album"], name="album_share_album_i_b3786d_idx"),
         ),
         migrations.AddIndex(
-            model_name='albumshare',
-            index=models.Index(fields=['shared_with'], name='album_share_shared__84ddb4_idx'),
+            model_name="albumshare",
+            index=models.Index(fields=["shared_with"], name="album_share_shared__84ddb4_idx"),
         ),
         migrations.AddIndex(
-            model_name='albumshare',
-            index=models.Index(fields=['permission_level'], name='album_share_permiss_f6ef49_idx'),
+            model_name="albumshare",
+            index=models.Index(fields=["permission_level"], name="album_share_permiss_f6ef49_idx"),
         ),
         migrations.AlterUniqueTogether(
-            name='albumshare',
-            unique_together={('album', 'shared_with')},
+            name="albumshare",
+            unique_together={("album", "shared_with")},
         ),
     ]

@@ -45,8 +45,9 @@ class PersonSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return 0
-        
+
         from albums.permissions import get_accessible_assets
+
         accessible_assets = get_accessible_assets(request.user)
         return obj.faces.filter(asset__in=accessible_assets).count()
 
@@ -55,8 +56,9 @@ class PersonSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return 0
-        
+
         from albums.permissions import get_accessible_assets
+
         accessible_assets = get_accessible_assets(request.user)
         return obj.faces.filter(confirmed=False, asset__in=accessible_assets).count()
 
@@ -65,8 +67,9 @@ class PersonSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return 0
-        
+
         from albums.permissions import get_accessible_assets
+
         accessible_assets = get_accessible_assets(request.user)
         return obj.faces.filter(asset__in=accessible_assets).values("asset").distinct().count()
 
@@ -75,16 +78,23 @@ class PersonSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return None
-        
+
         try:
             from albums.permissions import get_accessible_assets
+
             accessible_assets = get_accessible_assets(request.user)
-            
+
             face = obj.headshot_face
             # Only use headshot if it's from an accessible asset
-            if face and face.asset in accessible_assets and hasattr(face, "thumbnail") and face.thumbnail and face.thumbnail.is_ready:
+            if (
+                face
+                and face.asset in accessible_assets
+                and hasattr(face, "thumbnail")
+                and face.thumbnail
+                and face.thumbnail.is_ready
+            ):
                 return face.thumbnail.storage_url
-            
+
             # Fallback: use any available face thumbnail for this person from accessible assets (best quality first)
             from .models import Face
 

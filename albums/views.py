@@ -3,13 +3,12 @@ Views for the albums app.
 """
 
 from django.contrib.auth.models import User
-from django.db import transaction
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .models import Album, AlbumAsset, AlbumShare
-from .permissions import can_contribute_to_album, can_edit_album, can_view_album, get_accessible_albums
+from .models import AlbumAsset, AlbumShare
+from .permissions import can_contribute_to_album, can_edit_album, get_accessible_albums
 from .serializers import (
     AlbumCreateSerializer,
     AlbumSerializer,
@@ -46,18 +45,14 @@ class AlbumViewSet(viewsets.ModelViewSet):
         """Only allow owner to update album"""
         album = self.get_object()
         if not can_edit_album(request.user, album):
-            return Response(
-                {"error": "Only the album owner can edit album details"}, status=status.HTTP_403_FORBIDDEN
-            )
+            return Response({"error": "Only the album owner can edit album details"}, status=status.HTTP_403_FORBIDDEN)
         return super().update(request, *args, **kwargs)
 
     def partial_update(self, request, *args, **kwargs):
         """Only allow owner to partially update album"""
         album = self.get_object()
         if not can_edit_album(request.user, album):
-            return Response(
-                {"error": "Only the album owner can edit album details"}, status=status.HTTP_403_FORBIDDEN
-            )
+            return Response({"error": "Only the album owner can edit album details"}, status=status.HTTP_403_FORBIDDEN)
         return super().partial_update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
@@ -71,14 +66,14 @@ class AlbumViewSet(viewsets.ModelViewSet):
     def add_photos(self, request, pk=None):
         """
         Add photos to this album.
-        
+
         POST /api/albums/{id}/add_photos/
         Body: {"asset_ids": ["uuid1", "uuid2", ...]}
-        
+
         Requires contribute permission (owner or shared with contribute permission)
         """
         album = self.get_object()
-        
+
         if not can_contribute_to_album(request.user, album):
             return Response(
                 {"error": "You don't have permission to add photos to this album"}, status=status.HTTP_403_FORBIDDEN
@@ -111,14 +106,14 @@ class AlbumViewSet(viewsets.ModelViewSet):
     def remove_photos(self, request, pk=None):
         """
         Remove photos from this album.
-        
+
         POST /api/albums/{id}/remove_photos/
         Body: {"asset_ids": ["uuid1", "uuid2", ...]}
-        
+
         Requires contribute permission (owner or shared with contribute permission)
         """
         album = self.get_object()
-        
+
         if not can_contribute_to_album(request.user, album):
             return Response(
                 {"error": "You don't have permission to remove photos from this album"},
@@ -143,13 +138,13 @@ class AlbumViewSet(viewsets.ModelViewSet):
     def share(self, request, pk=None):
         """
         Share this album with another user.
-        
+
         POST /api/albums/{id}/share/
         Body: {
             "user_id": "uuid",
             "permission_level": "view" or "contribute"
         }
-        
+
         Only the album owner can share the album.
         """
         album = self.get_object()
@@ -193,10 +188,10 @@ class AlbumViewSet(viewsets.ModelViewSet):
     def unshare(self, request, pk=None):
         """
         Unshare this album with a user (remove sharing).
-        
+
         POST /api/albums/{id}/unshare/
         Body: {"user_id": "uuid"}
-        
+
         Only the album owner can unshare the album.
         """
         album = self.get_object()
@@ -220,9 +215,9 @@ class AlbumViewSet(viewsets.ModelViewSet):
     def shares(self, request, pk=None):
         """
         List all shares for this album.
-        
+
         GET /api/albums/{id}/shares/
-        
+
         Only the album owner can see the shares list.
         """
         album = self.get_object()
@@ -232,20 +227,20 @@ class AlbumViewSet(viewsets.ModelViewSet):
 
         shares = album.shares.select_related("shared_with", "shared_by").all()
         serializer = AlbumShareSerializer(shares, many=True)
-        
+
         return Response({"shares": serializer.data})
 
     @action(detail=True, methods=["patch"])
     def update_share(self, request, pk=None):
         """
         Update permission level for an existing share.
-        
+
         PATCH /api/albums/{id}/update_share/
         Body: {
             "user_id": "uuid",
             "permission_level": "view" or "contribute"
         }
-        
+
         Only the album owner can update share permissions.
         """
         album = self.get_object()
@@ -268,7 +263,7 @@ class AlbumViewSet(viewsets.ModelViewSet):
             share = AlbumShare.objects.get(album=album, shared_with_id=user_id)
             share.permission_level = permission_level
             share.save()
-            
+
             return Response(
                 {
                     "message": "Share permission updated successfully",

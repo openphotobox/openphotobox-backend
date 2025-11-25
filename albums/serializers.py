@@ -28,7 +28,17 @@ class AlbumSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "owner", "owner_username", "photo_count", "shared_with", "can_contribute", "is_owner", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "owner",
+            "owner_username",
+            "photo_count",
+            "shared_with",
+            "can_contribute",
+            "is_owner",
+            "created_at",
+            "updated_at",
+        ]
 
     def get_photo_count(self, obj):
         return obj.assets.count()
@@ -51,16 +61,16 @@ class AlbumSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return False
-        
+
         # Owner can always contribute
         if obj.owner == request.user:
             return True
-        
+
         # Check if user has contribute permission via share
         share = obj.shares.filter(shared_with=request.user).first()
         if share and share.permission_level == "contribute":
             return True
-        
+
         return False
 
     def get_is_owner(self, obj):
@@ -116,7 +126,14 @@ class AlbumShareSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "album_title", "shared_with_username", "shared_by_username", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "album_title",
+            "shared_with_username",
+            "shared_by_username",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class AlbumShareCreateSerializer(serializers.Serializer):
@@ -140,4 +157,3 @@ class AlbumShareUpdateSerializer(serializers.Serializer):
     """Serializer for updating album share permissions"""
 
     permission_level = serializers.ChoiceField(choices=["view", "contribute"], required=True)
-

@@ -9,10 +9,10 @@ class Album(models.Model):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    
+
     # Owner of the album
     owner = models.ForeignKey("auth.User", on_delete=models.CASCADE, related_name="owned_albums")
-    
+
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
@@ -71,19 +71,19 @@ class AlbumShare(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    
+
     # The album being shared
     album = models.ForeignKey(Album, on_delete=models.CASCADE, related_name="shares")
-    
+
     # User the album is shared with
     shared_with = models.ForeignKey("auth.User", on_delete=models.CASCADE, related_name="shared_albums")
-    
+
     # Permission level: view (read-only) or contribute (can add photos)
     permission_level = models.CharField(max_length=20, choices=PERMISSION_CHOICES, default="view")
-    
+
     # User who created the share (typically the album owner)
     shared_by = models.ForeignKey("auth.User", on_delete=models.CASCADE, related_name="created_shares")
-    
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

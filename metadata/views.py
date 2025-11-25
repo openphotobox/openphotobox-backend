@@ -185,7 +185,7 @@ class ClipNeighborsView(APIView):
         # Use pgvector index to get nearest neighbors via lateral join
         # Fetch more than k to account for filtering
         fetch_limit = min(k * 5, 100)  # Fetch extra, but cap at reasonable limit
-        
+
         with connection.cursor() as cursor:
             cursor.execute(
                 """

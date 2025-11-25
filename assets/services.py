@@ -158,10 +158,10 @@ class UploadService:
 
         # Create asset record
         metadata = metadata or {}
-        
+
         if not owner:
             raise ValidationError("Owner is required for asset creation")
-        
+
         asset = Asset.objects.create(
             sha256=sha256_hash,
             owner=owner,

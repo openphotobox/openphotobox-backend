@@ -46,7 +46,7 @@ class Command(BaseCommand):
         assume_yes = bool(options.get("yes"))
 
         # Imports here to avoid app loading if not needed elsewhere
-        from assets.models import Album, AlbumAsset, Asset, AssetThumbnail, StorageBackend, StorageBucket
+        from assets.models import Album, AlbumAsset, Asset, AssetThumbnail, StorageBucket
         from metadata.models import AssetKeyword, AssetMetadata, ClipEmbedding, KeywordTag, XmpSidecar
         from people.models import Face, FaceSearch, FaceThumbnail, Person
 
