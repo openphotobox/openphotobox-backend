@@ -44,13 +44,8 @@ def main():
     print("Press Ctrl+C to stop the scheduler")
     print("-" * 50)
 
-    app.start(
-        [
-            "celery",
-            "beat",
-            f"--loglevel={args.loglevel}",
-        ]
-    )
+    beat = app.Beat(loglevel=args.loglevel.upper())
+    beat.run()
 
 
 if __name__ == "__main__":

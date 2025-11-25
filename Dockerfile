@@ -12,12 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy requirements
 COPY requirements.txt .
 
-# Install Python dependencies with CPU-only PyTorch
-# This dramatically reduces image size (from ~4GB to ~800MB for torch)
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-cache-dir \
-    --index-url https://download.pytorch.org/whl/cpu \
-    torch==2.9.1 && \
     pip install --no-cache-dir -r requirements.txt
 
 # Runtime stage
