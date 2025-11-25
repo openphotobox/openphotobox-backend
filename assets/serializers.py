@@ -259,9 +259,9 @@ class AssetGallerySerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_thumbnail_url(self, obj):
-        thumbnail = obj.thumbnails.filter(is_ready=True, size="md").first()
+        thumbnail = obj.thumbnails.filter(is_ready=True, size="sm").first()
         if not thumbnail:
-            thumbnail = obj.thumbnails.filter(is_ready=True, size="sm").first()
+            thumbnail = obj.thumbnails.filter(is_ready=True, size="md").first()
         return thumbnail.storage_url if thumbnail else obj.storage_url
 
     def get_preview_url(self, obj):
