@@ -1,11 +1,15 @@
+import shutil
+from pathlib import Path
+
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 
 class Command(BaseCommand):
     help = (
-        "Delete all library data (photos/assets, albums, faces, thumbnails, metadata). Optional flags to "
-        "include sharing and people. Intended for wiping a test database."
+        "Delete all library data (photos/assets, albums, faces, thumbnails, metadata) including physical "
+        "directories on disk (originals/thumbnails). Optional flags to include sharing and people. "
+        "Intended for wiping a test database."
     )
 
     def add_arguments(self, parser):
@@ -42,7 +46,7 @@ class Command(BaseCommand):
         assume_yes = bool(options.get("yes"))
 
         # Imports here to avoid app loading if not needed elsewhere
-        from assets.models import Album, AlbumAsset, Asset, AssetThumbnail
+        from assets.models import Album, AlbumAsset, Asset, AssetThumbnail, StorageBackend, StorageBucket
         from metadata.models import AssetKeyword, AssetMetadata, ClipEmbedding, KeywordTag, XmpSidecar
         from people.models import Face, FaceSearch, FaceThumbnail, Person
 
@@ -80,10 +84,31 @@ class Command(BaseCommand):
         if NotificationsModel is not None:
             counts["Notification"] = NotificationsModel.objects.count()
 
+        # Collect storage directories to delete
+        storage_dirs = []
+        for bucket in StorageBucket.objects.select_related("backend").all():
+            try:
+                base_path = bucket.backend.get_base_path()
+                # For local storage, the full path is base_path / bucket.name
+                bucket_path = Path(base_path) / bucket.name
+                if bucket_path.exists():
+                    storage_dirs.append((bucket.purpose, str(bucket_path)))
+            except Exception as e:
+                self.stdout.write(
+                    self.style.WARNING(f"Warning: Could not determine path for bucket '{bucket.display_name}': {e}")
+                )
+
         # Show plan
         self.stdout.write("This will delete the following data (row counts):")
         for name, c in counts.items():
             self.stdout.write(f"- {name}: {c}")
+
+        if storage_dirs:
+            self.stdout.write("\nThe following directories will be deleted from disk:")
+            for purpose, path in storage_dirs:
+                self.stdout.write(f"- {purpose}: {path}")
+        else:
+            self.stdout.write(self.style.WARNING("\nWarning: No storage directories found to delete."))
 
         if dry_run:
             self.stdout.write(self.style.WARNING("Dry run only. No data deleted."))
@@ -126,5 +151,15 @@ class Command(BaseCommand):
             if NotificationsModel is not None:
                 deleted, _ = NotificationsModel.objects.all().delete()
                 self.stdout.write(f"Deleted {deleted} Notification")
+
+        # Delete physical directories
+        if storage_dirs:
+            self.stdout.write("\nDeleting storage directories from disk...")
+            for purpose, path in storage_dirs:
+                try:
+                    shutil.rmtree(path)
+                    self.stdout.write(f"Deleted {purpose} directory: {path}")
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f"Error deleting {purpose} directory {path}: {e}"))
 
         self.stdout.write(self.style.SUCCESS("Library wipe complete."))

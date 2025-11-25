@@ -32,8 +32,13 @@ class ClipSearchView(APIView):
         emb_list = np.asarray(text_emb, dtype=np.float32).astype(float).tolist()
         emb_str = "[" + ",".join(str(x) for x in emb_list) + "]"
 
-        # Optional filtering by people and albums
-        allowed_asset_ids = None  # None means unrestricted
+        # Filter to only accessible assets
+        from albums.permissions import get_accessible_assets
+
+        accessible_assets = get_accessible_assets(request.user)
+        allowed_asset_ids = set(accessible_assets.values_list("id", flat=True))
+
+        # Optional additional filtering by people and albums
         try:
             # Build allowed set by people filters
             people_param = request.query_params.get("people") or request.query_params.get("person_ids")
@@ -153,6 +158,17 @@ class ClipNeighborsView(APIView):
         except Exception:
             max_distance = None
 
+        # Verify the asset is accessible to the user
+        from albums.permissions import can_view_asset
+        from assets.models import Asset
+
+        try:
+            asset = Asset.objects.get(id=asset_id)
+            if not can_view_asset(request.user, asset):
+                return Response({"error": "Asset not found or not accessible"}, status=status.HTTP_404_NOT_FOUND)
+        except Asset.DoesNotExist:
+            return Response({"error": "Asset not found"}, status=status.HTTP_404_NOT_FOUND)
+
         # Ensure the asset exists in clip_embeddings
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1 FROM clip_embeddings WHERE asset_id = %s LIMIT 1", [asset_id])
@@ -160,7 +176,16 @@ class ClipNeighborsView(APIView):
             if not row:
                 return Response({"results": []})
 
+        # Get accessible asset IDs for filtering
+        from albums.permissions import get_accessible_assets
+
+        accessible_assets = get_accessible_assets(request.user)
+        accessible_asset_ids = set(str(aid) for aid in accessible_assets.values_list("id", flat=True))
+
         # Use pgvector index to get nearest neighbors via lateral join
+        # Fetch more than k to account for filtering
+        fetch_limit = min(k * 5, 100)  # Fetch extra, but cap at reasonable limit
+        
         with connection.cursor() as cursor:
             cursor.execute(
                 """
@@ -178,13 +203,17 @@ class ClipNeighborsView(APIView):
                 WHERE ce.asset_id = %s
                 ORDER BY distance ASC
                 """,
-                [k, asset_id],
+                [fetch_limit, asset_id],
             )
             rows = cursor.fetchall()
 
+        # Filter to accessible assets only
         results = []
         for neighbor_asset_id, distance, similarity in rows:
             if max_distance is not None and float(distance) > max_distance:
+                continue
+            # Only include accessible assets
+            if str(neighbor_asset_id) not in accessible_asset_ids:
                 continue
             results.append(
                 {
@@ -193,6 +222,9 @@ class ClipNeighborsView(APIView):
                     "similarity": float(similarity),
                 }
             )
+            # Stop once we have k results
+            if len(results) >= k:
+                break
 
         return Response({"results": results})
 

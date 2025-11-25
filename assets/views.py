@@ -11,11 +11,12 @@ from rest_framework.response import Response
 
 from openphotobox_backend.pagination import AssetCursorPagination
 
-from .models import Album, AlbumAsset, Asset, StorageBackend, StorageBucket
+from .models import Asset, Comment, Like, StorageBackend, StorageBucket
 from .serializers import (
-    AlbumSerializer,
     AssetGallerySerializer,
     AssetSerializer,
+    CommentSerializer,
+    LikeSerializer,
     StorageBackendSerializer,
     StorageBucketSerializer,
 )
@@ -34,9 +35,13 @@ class AssetViewSet(viewsets.ModelViewSet):
     pagination_class = AssetCursorPagination
 
     def get_queryset(self):
+        # Filter to only accessible assets based on album ownership/sharing
+        from albums.permissions import get_accessible_assets
+
+        queryset = get_accessible_assets(self.request.user)
         queryset = (
-            Asset.objects.prefetch_related("thumbnails")
-            .select_related("storage_bucket", "storage_bucket__backend")
+            queryset.prefetch_related("thumbnails")
+            .select_related("storage_bucket", "storage_bucket__backend", "owner")
             .order_by("-taken_at", "-created_at")
         )
         # Only show assets that have at least one ready thumbnail to avoid heavy original loads
@@ -88,7 +93,7 @@ class AssetViewSet(viewsets.ModelViewSet):
         albums_param = self.request.query_params.get("albums") or self.request.query_params.get("album_ids")
         if albums_param or album_id:
             try:
-                from .models import AlbumAsset
+                from albums.models import AlbumAsset
 
                 album_ids = []
                 if albums_param:
@@ -262,7 +267,9 @@ class AssetViewSet(viewsets.ModelViewSet):
                     return Response({"error": "Invalid metadata JSON"}, status=status.HTTP_400_BAD_REQUEST)
 
             # Save file to local storage and create asset
-            asset = upload_service.save_uploaded_file(file=uploaded_file, bucket=bucket, metadata=metadata)
+            asset = upload_service.save_uploaded_file(
+                file=uploaded_file, bucket=bucket, metadata=metadata, owner=request.user
+            )
 
             # Serialize and return asset details
             serializer = AssetSerializer(asset)
@@ -335,6 +342,22 @@ class AssetViewSet(viewsets.ModelViewSet):
             return Response(
                 {"error": f"Upload configuration failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=False, methods=["get"])
+    def liked(self, request):
+        """Return all assets liked by the current user.
+        Uses the same pagination as the gallery endpoint.
+        """
+        # Get assets that the user has liked
+        liked_asset_ids = Like.objects.filter(user=request.user).values_list("asset_id", flat=True)
+
+        # Filter to accessible assets (respecting album permissions)
+        queryset = self.get_queryset().filter(id__in=liked_asset_ids)
+
+        # Paginate and return
+        page = self.paginate_queryset(queryset)
+        serializer = AssetGallerySerializer(page, many=True, context={"request": request})
+        return self.get_paginated_response(serializer.data)
 
 
 def stream_events(request):
@@ -581,36 +604,6 @@ class StorageBucketViewSet(viewsets.ModelViewSet):
         return queryset.order_by("backend__name", "purpose", "display_name")
 
 
-class AlbumViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for managing photo albums.
-
-    Albums are collections of photos that can be organized and shared.
-    """
-
-    queryset = Album.objects.all()
-    serializer_class = AlbumSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    @action(detail=True, methods=["post"])
-    def add_photos(self, request, pk=None):
-        """Add photos to this album"""
-        album = self.get_object()
-        asset_ids = request.data.get("asset_ids", [])
-
-        if not asset_ids:
-            return Response({"error": "asset_ids is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Create album-photo relationships
-        album_assets = []
-        for i, asset_id in enumerate(asset_ids):
-            album_assets.append(AlbumAsset(album=album, asset_id=asset_id, order=i))
-
-        AlbumAsset.objects.bulk_create(album_assets, ignore_conflicts=True)
-
-        return Response({"message": f"Added {len(asset_ids)} photos to album", "album": AlbumSerializer(album).data})
-
-
 # Image serving views for local storage
 def serve_image(request, bucket_id, path):
     """
@@ -714,3 +707,87 @@ def serve_face_thumbnail(request, bucket_id, path):
         raise Http404("Bucket not found")
     except Exception:
         raise Http404("Error serving face thumbnail")
+
+
+class LikeViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing likes on assets.
+    """
+
+    queryset = Like.objects.all()
+    serializer_class = LikeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter likes to only those on accessible assets"""
+        from albums.permissions import get_accessible_assets
+
+        accessible_assets = get_accessible_assets(self.request.user)
+        return Like.objects.filter(asset__in=accessible_assets).select_related("user", "asset")
+
+    def perform_create(self, serializer):
+        """Check that user can view the asset before allowing like"""
+        from albums.permissions import can_view_asset
+
+        asset = serializer.validated_data.get("asset")
+        if not can_view_asset(self.request.user, asset):
+            raise ValidationError("You do not have permission to like this asset")
+
+        # Set the user to the current user
+        serializer.save(user=self.request.user)
+
+    def destroy(self, request, *args, **kwargs):
+        """Only allow users to delete their own likes"""
+        like = self.get_object()
+        if like.user != request.user:
+            return Response({"error": "You can only delete your own likes"}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing comments on assets.
+    """
+
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter comments to only those on accessible assets"""
+        from albums.permissions import get_accessible_assets
+
+        accessible_assets = get_accessible_assets(self.request.user)
+        return Comment.objects.filter(asset__in=accessible_assets).select_related("user", "asset")
+
+    def perform_create(self, serializer):
+        """Check that user can view the asset before allowing comment"""
+        from albums.permissions import can_view_asset
+
+        asset = serializer.validated_data.get("asset")
+        if not can_view_asset(self.request.user, asset):
+            raise ValidationError("You do not have permission to comment on this asset")
+
+        # Set the user to the current user
+        serializer.save(user=self.request.user)
+
+    def update(self, request, *args, **kwargs):
+        """Only allow users to update their own comments"""
+        comment = self.get_object()
+        if comment.user != request.user:
+            return Response({"error": "You can only edit your own comments"}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        """Only allow users to update their own comments"""
+        comment = self.get_object()
+        if comment.user != request.user:
+            return Response({"error": "You can only edit your own comments"}, status=status.HTTP_403_FORBIDDEN)
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """Only allow users to delete their own comments"""
+        comment = self.get_object()
+        if comment.user != request.user:
+            return Response({"error": "You can only delete your own comments"}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)

@@ -41,29 +41,56 @@ class PersonSerializer(serializers.ModelSerializer):
         ]
 
     def get_face_count(self, obj):
-        """Get the number of faces for this person."""
-        return obj.faces.count()
+        """Get the number of accessible faces for this person."""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return 0
+        
+        from albums.permissions import get_accessible_assets
+        accessible_assets = get_accessible_assets(request.user)
+        return obj.faces.filter(asset__in=accessible_assets).count()
 
     def get_candidate_count(self, obj):
-        """Get the number of unconfirmed (candidate) faces for this person."""
-        return obj.faces.filter(confirmed=False).count()
+        """Get the number of unconfirmed (candidate) faces for this person in accessible assets."""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return 0
+        
+        from albums.permissions import get_accessible_assets
+        accessible_assets = get_accessible_assets(request.user)
+        return obj.faces.filter(confirmed=False, asset__in=accessible_assets).count()
 
     def get_asset_count(self, obj):
-        """Get the number of unique assets this person appears in."""
-        return obj.faces.values("asset").distinct().count()
+        """Get the number of unique accessible assets this person appears in."""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return 0
+        
+        from albums.permissions import get_accessible_assets
+        accessible_assets = get_accessible_assets(request.user)
+        return obj.faces.filter(asset__in=accessible_assets).values("asset").distinct().count()
 
     def get_headshot_url(self, obj):
-        """Get URL for the person's headshot face thumbnail if available."""
+        """Get URL for the person's headshot face thumbnail if available (from accessible assets only)."""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return None
+        
         try:
+            from albums.permissions import get_accessible_assets
+            accessible_assets = get_accessible_assets(request.user)
+            
             face = obj.headshot_face
-            if face and hasattr(face, "thumbnail") and face.thumbnail and face.thumbnail.is_ready:
+            # Only use headshot if it's from an accessible asset
+            if face and face.asset in accessible_assets and hasattr(face, "thumbnail") and face.thumbnail and face.thumbnail.is_ready:
                 return face.thumbnail.storage_url
-            # Fallback: use any available face thumbnail for this person (best quality first)
+            
+            # Fallback: use any available face thumbnail for this person from accessible assets (best quality first)
             from .models import Face
 
             candidate = (
                 Face.objects.select_related("thumbnail")
-                .filter(person=obj, thumbnail__is_ready=True)
+                .filter(person=obj, asset__in=accessible_assets, thumbnail__is_ready=True)
                 .order_by("-quality", "-detection_confidence", "-created_at")
                 .first()
             )

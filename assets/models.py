@@ -115,6 +115,9 @@ class Asset(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     sha256 = models.CharField(max_length=64, unique=True, db_index=True)
 
+    # Owner of the asset
+    owner = models.ForeignKey("auth.User", on_delete=models.CASCADE, related_name="owned_assets")
+
     # Storage information
     storage_bucket = models.ForeignKey(StorageBucket, on_delete=models.PROTECT, related_name="assets")
     storage_key = models.CharField(max_length=1024)
@@ -154,54 +157,6 @@ class Asset(models.Model):
         if prefix:
             return f"{prefix}/{self.storage_key}"
         return self.storage_key
-
-
-class Album(models.Model):
-    """
-    Albums for organizing photos.
-    """
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    title = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-
-    # Cover photo for the album
-    cover_asset = models.ForeignKey(
-        Asset, on_delete=models.SET_NULL, null=True, blank=True, related_name="cover_for_albums"
-    )
-
-    # Many-to-many relationship with photos
-    assets = models.ManyToManyField(Asset, through="AlbumAsset", related_name="albums")
-
-    # Timestamps
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = "albums"
-        ordering = ["title"]
-
-    def __str__(self):
-        return self.title
-
-
-class AlbumAsset(models.Model):
-    """
-    Through model for Album-Photo many-to-many relationship with ordering.
-    """
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    album = models.ForeignKey(Album, on_delete=models.CASCADE)
-    asset = models.ForeignKey(Asset, on_delete=models.CASCADE)
-    order = models.PositiveIntegerField(default=0)
-
-    # Timestamps
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = "album_assets"
-        unique_together = ["album", "asset"]
-        ordering = ["order", "created_at"]
 
 
 class AssetThumbnail(models.Model):
@@ -265,3 +220,58 @@ class AssetThumbnail(models.Model):
             "preview": 2048,
         }
         return size_map.get(size, 300)
+
+
+class Like(models.Model):
+    """
+    Likes for assets.
+    Users can like photos they have access to.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    asset = models.ForeignKey(Asset, on_delete=models.CASCADE, related_name="likes")
+    user = models.ForeignKey("auth.User", on_delete=models.CASCADE, related_name="liked_assets")
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "asset_likes"
+        unique_together = ["asset", "user"]
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["asset"]),
+            models.Index(fields=["user"]),
+            models.Index(fields=["created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} likes {self.asset.id}"
+
+
+class Comment(models.Model):
+    """
+    Comments on assets.
+    Users can comment on photos they have access to.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    asset = models.ForeignKey(Asset, on_delete=models.CASCADE, related_name="comments")
+    user = models.ForeignKey("auth.User", on_delete=models.CASCADE, related_name="asset_comments")
+    content = models.TextField()
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "asset_comments"
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["asset"]),
+            models.Index(fields=["user"]),
+            models.Index(fields=["created_at"]),
+        ]
+
+    def __str__(self):
+        return f"Comment by {self.user.username} on {self.asset.id}"

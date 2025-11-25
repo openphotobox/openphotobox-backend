@@ -142,6 +142,637 @@
                 }
             }
         },
+        "/api/albums/": {
+            "get": {
+                "operationId": "albums_list",
+                "description": "ViewSet for managing photo albums.\n\nAlbums are collections of photos that can be organized and shared.",
+                "parameters": [
+                    {
+                        "name": "cursor",
+                        "required": false,
+                        "in": "query",
+                        "description": "The pagination cursor value.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "required": false,
+                        "in": "query",
+                        "description": "Number of results to return per page.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "albums"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedAlbumList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "albums_create",
+                "description": "ViewSet for managing photo albums.\n\nAlbums are collections of photos that can be organized and shared.",
+                "tags": [
+                    "albums"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AlbumCreate"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AlbumCreate"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AlbumCreate"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AlbumCreate"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/albums/{id}/": {
+            "get": {
+                "operationId": "albums_retrieve",
+                "description": "ViewSet for managing photo albums.\n\nAlbums are collections of photos that can be organized and shared.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this album.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "albums"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Album"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "put": {
+                "operationId": "albums_update",
+                "description": "Only allow owner to update album",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this album.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "albums"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Album"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Album"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Album"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Album"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "albums_partial_update",
+                "description": "Only allow owner to partially update album",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this album.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "albums"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedAlbum"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedAlbum"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedAlbum"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Album"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "albums_destroy",
+                "description": "Only allow owner to delete album",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this album.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "albums"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/albums/{id}/add_photos/": {
+            "post": {
+                "operationId": "albums_add_photos_create",
+                "description": "Add photos to this album.\n\nPOST /api/albums/{id}/add_photos/\nBody: {\"asset_ids\": [\"uuid1\", \"uuid2\", ...]}\n\nRequires contribute permission (owner or shared with contribute permission)",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this album.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "albums"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Album"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Album"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Album"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Album"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/albums/{id}/remove_photos/": {
+            "post": {
+                "operationId": "albums_remove_photos_create",
+                "description": "Remove photos from this album.\n\nPOST /api/albums/{id}/remove_photos/\nBody: {\"asset_ids\": [\"uuid1\", \"uuid2\", ...]}\n\nRequires contribute permission (owner or shared with contribute permission)",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this album.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "albums"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Album"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Album"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Album"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Album"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/albums/{id}/share/": {
+            "post": {
+                "operationId": "albums_share_create",
+                "description": "Share this album with another user.\n\nPOST /api/albums/{id}/share/\nBody: {\n    \"user_id\": \"uuid\",\n    \"permission_level\": \"view\" or \"contribute\"\n}\n\nOnly the album owner can share the album.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this album.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "albums"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Album"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Album"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Album"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Album"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/albums/{id}/shares/": {
+            "get": {
+                "operationId": "albums_shares_retrieve",
+                "description": "List all shares for this album.\n\nGET /api/albums/{id}/shares/\n\nOnly the album owner can see the shares list.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this album.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "albums"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Album"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/albums/{id}/unshare/": {
+            "post": {
+                "operationId": "albums_unshare_create",
+                "description": "Unshare this album with a user (remove sharing).\n\nPOST /api/albums/{id}/unshare/\nBody: {\"user_id\": \"uuid\"}\n\nOnly the album owner can unshare the album.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this album.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "albums"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Album"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Album"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Album"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Album"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/albums/{id}/update_share/": {
+            "patch": {
+                "operationId": "albums_update_share_partial_update",
+                "description": "Update permission level for an existing share.\n\nPATCH /api/albums/{id}/update_share/\nBody: {\n    \"user_id\": \"uuid\",\n    \"permission_level\": \"view\" or \"contribute\"\n}\n\nOnly the album owner can update share permissions.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this album.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "albums"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedAlbum"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedAlbum"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedAlbum"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Album"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/assets/": {
             "get": {
                 "operationId": "assets_list",
@@ -428,353 +1059,6 @@
                 }
             }
         },
-        "/api/assets/albums/": {
-            "get": {
-                "operationId": "assets_albums_list",
-                "description": "ViewSet for managing photo albums.\n\nAlbums are collections of photos that can be organized and shared.",
-                "parameters": [
-                    {
-                        "name": "cursor",
-                        "required": false,
-                        "in": "query",
-                        "description": "The pagination cursor value.",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "limit",
-                        "required": false,
-                        "in": "query",
-                        "description": "Number of results to return per page.",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "tags": [
-                    "assets"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {
-                        "tokenAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PaginatedAlbumList"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            },
-            "post": {
-                "operationId": "assets_albums_create",
-                "description": "ViewSet for managing photo albums.\n\nAlbums are collections of photos that can be organized and shared.",
-                "tags": [
-                    "assets"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/Album"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/Album"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/Album"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {
-                        "tokenAuth": []
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Album"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/assets/albums/{id}/": {
-            "get": {
-                "operationId": "assets_albums_retrieve",
-                "description": "ViewSet for managing photo albums.\n\nAlbums are collections of photos that can be organized and shared.",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "id",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "description": "A UUID string identifying this album.",
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "assets"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {
-                        "tokenAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Album"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            },
-            "put": {
-                "operationId": "assets_albums_update",
-                "description": "ViewSet for managing photo albums.\n\nAlbums are collections of photos that can be organized and shared.",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "id",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "description": "A UUID string identifying this album.",
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "assets"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/Album"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/Album"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/Album"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {
-                        "tokenAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Album"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            },
-            "patch": {
-                "operationId": "assets_albums_partial_update",
-                "description": "ViewSet for managing photo albums.\n\nAlbums are collections of photos that can be organized and shared.",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "id",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "description": "A UUID string identifying this album.",
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "assets"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PatchedAlbum"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PatchedAlbum"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PatchedAlbum"
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {
-                        "tokenAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Album"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            },
-            "delete": {
-                "operationId": "assets_albums_destroy",
-                "description": "ViewSet for managing photo albums.\n\nAlbums are collections of photos that can be organized and shared.",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "id",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "description": "A UUID string identifying this album.",
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "assets"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {
-                        "tokenAuth": []
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No response body"
-                    }
-                }
-            }
-        },
-        "/api/assets/albums/{id}/add_photos/": {
-            "post": {
-                "operationId": "assets_albums_add_photos_create",
-                "description": "Add photos to this album",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "id",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "description": "A UUID string identifying this album.",
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "assets"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/Album"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/Album"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/Album"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {
-                        "tokenAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Album"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
         "/api/assets/bulk_update/": {
             "post": {
                 "operationId": "assets_bulk_update_create",
@@ -853,6 +1137,292 @@
                 }
             }
         },
+        "/api/assets/comments/": {
+            "get": {
+                "operationId": "assets_comments_list",
+                "description": "ViewSet for managing comments on assets.",
+                "parameters": [
+                    {
+                        "name": "cursor",
+                        "required": false,
+                        "in": "query",
+                        "description": "The pagination cursor value.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "required": false,
+                        "in": "query",
+                        "description": "Number of results to return per page.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "assets"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedCommentList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "assets_comments_create",
+                "description": "ViewSet for managing comments on assets.",
+                "tags": [
+                    "assets"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Comment"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Comment"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Comment"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Comment"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/assets/comments/{id}/": {
+            "get": {
+                "operationId": "assets_comments_retrieve",
+                "description": "ViewSet for managing comments on assets.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this comment.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "assets"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Comment"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "put": {
+                "operationId": "assets_comments_update",
+                "description": "Only allow users to update their own comments",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this comment.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "assets"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Comment"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Comment"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Comment"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Comment"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "assets_comments_partial_update",
+                "description": "Only allow users to update their own comments",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this comment.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "assets"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedComment"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedComment"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedComment"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Comment"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "assets_comments_destroy",
+                "description": "Only allow users to delete their own comments",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this comment.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "assets"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
         "/api/assets/gallery/": {
             "get": {
                 "operationId": "assets_gallery_retrieve",
@@ -878,6 +1448,321 @@
                             }
                         },
                         "description": ""
+                    }
+                }
+            }
+        },
+        "/api/assets/liked/": {
+            "get": {
+                "operationId": "assets_liked_retrieve",
+                "description": "Return all assets liked by the current user.\nUses the same pagination as the gallery endpoint.",
+                "tags": [
+                    "assets"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Asset"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/assets/likes/": {
+            "get": {
+                "operationId": "assets_likes_list",
+                "description": "ViewSet for managing likes on assets.",
+                "parameters": [
+                    {
+                        "name": "cursor",
+                        "required": false,
+                        "in": "query",
+                        "description": "The pagination cursor value.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "required": false,
+                        "in": "query",
+                        "description": "Number of results to return per page.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "assets"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedLikeList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "assets_likes_create",
+                "description": "ViewSet for managing likes on assets.",
+                "tags": [
+                    "assets"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Like"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Like"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Like"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Like"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/assets/likes/{id}/": {
+            "get": {
+                "operationId": "assets_likes_retrieve",
+                "description": "ViewSet for managing likes on assets.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this like.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "assets"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Like"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "put": {
+                "operationId": "assets_likes_update",
+                "description": "ViewSet for managing likes on assets.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this like.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "assets"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Like"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Like"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Like"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Like"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "assets_likes_partial_update",
+                "description": "ViewSet for managing likes on assets.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this like.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "assets"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedLike"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedLike"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedLike"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Like"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "assets_likes_destroy",
+                "description": "Only allow users to delete their own likes",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this like.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "assets"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
                     }
                 }
             }
@@ -2084,6 +2969,47 @@
                 }
             }
         },
+        "/api/people/{id}/candidate-faces/": {
+            "get": {
+                "operationId": "people_candidate_faces_retrieve",
+                "description": "Get unconfirmed (candidate) faces for a person.\nThese are faces that were auto-assigned but haven't been confirmed by a user.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this person.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "people"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Person"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/people/{id}/merge/": {
             "post": {
                 "operationId": "people_merge_create",
@@ -2525,6 +3451,55 @@
             "post": {
                 "operationId": "people_faces_assign_create",
                 "description": "Assign one or more faces to a person.\nBody: { face_ids: [uuid,...], person_id: uuid }",
+                "tags": [
+                    "people"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Face"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Face"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Face"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Face"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/people/faces/bulk-confirm/": {
+            "post": {
+                "operationId": "people_faces_bulk_confirm_create",
+                "description": "Confirm one or more faces (mark as confirmed by user).\nBody: { face_ids: [uuid,...] }",
                 "tags": [
                     "people"
                 ],
@@ -3041,6 +4016,14 @@
                         "format": "uuid",
                         "readOnly": true
                     },
+                    "owner": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "owner_username": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "title": {
                         "type": "string",
                         "maxLength": 255
@@ -3057,6 +4040,18 @@
                         "type": "string",
                         "readOnly": true
                     },
+                    "shared_with": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "can_contribute": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "is_owner": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -3069,11 +4064,37 @@
                     }
                 },
                 "required": [
+                    "can_contribute",
                     "created_at",
                     "id",
+                    "is_owner",
+                    "owner",
+                    "owner_username",
                     "photo_count",
+                    "shared_with",
                     "title",
                     "updated_at"
+                ]
+            },
+            "AlbumCreate": {
+                "type": "object",
+                "description": "Serializer for creating albums",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "cover_asset": {
+                        "type": "string",
+                        "format": "uuid",
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "title"
                 ]
             },
             "Asset": {
@@ -3086,6 +4107,18 @@
                         "readOnly": true
                     },
                     "sha256": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "owner": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "owner_username": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "can_edit": {
                         "type": "string",
                         "readOnly": true
                     },
@@ -3155,6 +4188,10 @@
                         "type": "string",
                         "readOnly": true
                     },
+                    "preview_url": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "original_url": {
                         "type": "string",
                         "readOnly": true
@@ -3164,6 +4201,26 @@
                         "readOnly": true
                     },
                     "faces": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "likes_count": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "comments_count": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "liked_by_user": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "likes": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "comments": {
                         "type": "string",
                         "readOnly": true
                     },
@@ -3179,14 +4236,23 @@
                     }
                 },
                 "required": [
+                    "can_edit",
+                    "comments",
+                    "comments_count",
                     "created_at",
                     "faces",
                     "height",
                     "id",
                     "keyword_names",
+                    "liked_by_user",
+                    "likes",
+                    "likes_count",
                     "metadata",
                     "mime_type",
                     "original_url",
+                    "owner",
+                    "owner_username",
+                    "preview_url",
                     "sha256",
                     "storage_backend_name",
                     "storage_bucket",
@@ -3206,6 +4272,56 @@
                 ],
                 "type": "string",
                 "description": "* `local` - Local File System"
+            },
+            "Comment": {
+                "type": "object",
+                "description": "Serializer for Comment model",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "asset": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "user": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "username": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "can_edit": {
+                        "type": "string",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "asset",
+                    "can_edit",
+                    "content",
+                    "created_at",
+                    "id",
+                    "updated_at",
+                    "user",
+                    "username"
+                ]
             },
             "Face": {
                 "type": "object",
@@ -3274,6 +4390,22 @@
                         "type": "string",
                         "maxLength": 100
                     },
+                    "confirmed": {
+                        "type": "boolean"
+                    },
+                    "confirmed_by": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "confirmed_by_username": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "confirmed_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -3288,6 +4420,7 @@
                 "required": [
                     "asset",
                     "asset_id",
+                    "confirmed_by_username",
                     "created_at",
                     "embedding",
                     "h",
@@ -3300,6 +4433,41 @@
                     "w",
                     "x",
                     "y"
+                ]
+            },
+            "Like": {
+                "type": "object",
+                "description": "Serializer for Like model",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "asset": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "user": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "username": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "asset",
+                    "created_at",
+                    "id",
+                    "user",
+                    "username"
                 ]
             },
             "PaginatedAlbumList": {
@@ -3354,6 +4522,32 @@
                     }
                 }
             },
+            "PaginatedCommentList": {
+                "type": "object",
+                "required": [
+                    "results"
+                ],
+                "properties": {
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?cursor=cD00ODY%3D\""
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?cursor=cj0xJnA9NDg3"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Comment"
+                        }
+                    }
+                }
+            },
             "PaginatedFaceList": {
                 "type": "object",
                 "required": [
@@ -3376,6 +4570,32 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/Face"
+                        }
+                    }
+                }
+            },
+            "PaginatedLikeList": {
+                "type": "object",
+                "required": [
+                    "results"
+                ],
+                "properties": {
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?cursor=cD00ODY%3D\""
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?cursor=cj0xJnA9NDg3"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Like"
                         }
                     }
                 }
@@ -3467,6 +4687,14 @@
                         "format": "uuid",
                         "readOnly": true
                     },
+                    "owner": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "owner_username": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "title": {
                         "type": "string",
                         "maxLength": 255
@@ -3480,6 +4708,18 @@
                         "nullable": true
                     },
                     "photo_count": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "shared_with": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "can_contribute": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "is_owner": {
                         "type": "string",
                         "readOnly": true
                     },
@@ -3505,6 +4745,18 @@
                         "readOnly": true
                     },
                     "sha256": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "owner": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "owner_username": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "can_edit": {
                         "type": "string",
                         "readOnly": true
                     },
@@ -3574,6 +4826,10 @@
                         "type": "string",
                         "readOnly": true
                     },
+                    "preview_url": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "original_url": {
                         "type": "string",
                         "readOnly": true
@@ -3586,6 +4842,26 @@
                         "type": "string",
                         "readOnly": true
                     },
+                    "likes_count": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "comments_count": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "liked_by_user": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "likes": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "comments": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -3594,6 +4870,46 @@
                     "updated_at": {
                         "type": "string",
                         "format": "date-time",
+                        "readOnly": true
+                    }
+                }
+            },
+            "PatchedComment": {
+                "type": "object",
+                "description": "Serializer for Comment model",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "asset": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "user": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "username": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "can_edit": {
+                        "type": "string",
                         "readOnly": true
                     }
                 }
@@ -3665,12 +4981,56 @@
                         "type": "string",
                         "maxLength": 100
                     },
+                    "confirmed": {
+                        "type": "boolean"
+                    },
+                    "confirmed_by": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "confirmed_by_username": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "confirmed_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
                         "readOnly": true
                     },
                     "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                }
+            },
+            "PatchedLike": {
+                "type": "object",
+                "description": "Serializer for Like model",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "asset": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "user": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "username": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "created_at": {
                         "type": "string",
                         "format": "date-time",
                         "readOnly": true
@@ -3695,6 +5055,10 @@
                         "type": "string"
                     },
                     "face_count": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "candidate_count": {
                         "type": "string",
                         "readOnly": true
                     },
@@ -3882,6 +5246,10 @@
                         "type": "string",
                         "readOnly": true
                     },
+                    "candidate_count": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "asset_count": {
                         "type": "string",
                         "readOnly": true
@@ -3907,6 +5275,7 @@
                 },
                 "required": [
                     "asset_count",
+                    "candidate_count",
                     "created_at",
                     "display_name",
                     "face_count",

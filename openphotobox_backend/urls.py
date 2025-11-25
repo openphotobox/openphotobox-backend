@@ -31,7 +31,8 @@ urlpatterns = [
     path("face-thumbnails/<uuid:bucket_id>/<path:path>", serve_face_thumbnail, name="serve_face_thumbnail"),
     # API endpoints by app domain
     path("api/", include("users.urls")),  # Authentication and setup (at root level)
-    path("api/assets/", include("assets.urls")),  # Asset management, albums, uploads
+    path("api/", include("albums.urls")),  # Album management and sharing
+    path("api/assets/", include("assets.urls")),  # Asset management, uploads
     path("api/people/", include("people.urls")),  # People, faces, recognition
     path("api/metadata/", include("metadata.urls")),  # EXIF, keywords, CLIP embeddings
     path("api/events/stream/", stream_events, name="sse-events"),

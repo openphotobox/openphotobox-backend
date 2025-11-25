@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Album, Asset, StorageBackend, StorageBucket
+from .models import Asset, Comment, Like, StorageBackend, StorageBucket
 
 
 class StorageBackendSerializer(serializers.ModelSerializer):
@@ -52,6 +52,10 @@ class AssetSerializer(serializers.ModelSerializer):
     storage_url = serializers.CharField(read_only=True)
     storage_path = serializers.CharField(read_only=True)
     keyword_names = serializers.ListField(child=serializers.CharField(), read_only=True)
+    
+    # Owner information
+    owner_username = serializers.CharField(source="owner.username", read_only=True)
+    can_edit = serializers.SerializerMethodField()
 
     # Thumbnail URLs for different sizes
     thumbnail_url = serializers.SerializerMethodField()
@@ -63,11 +67,21 @@ class AssetSerializer(serializers.ModelSerializer):
     metadata = serializers.SerializerMethodField()
     faces = serializers.SerializerMethodField()
 
+    # Likes and comments
+    likes_count = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
+    liked_by_user = serializers.SerializerMethodField()
+    likes = serializers.SerializerMethodField()
+    comments = serializers.SerializerMethodField()
+
     class Meta:
         model = Asset
         fields = [
             "id",
             "sha256",
+            "owner",
+            "owner_username",
+            "can_edit",
             "storage_bucket",
             "storage_bucket_name",
             "storage_backend_name",
@@ -87,12 +101,20 @@ class AssetSerializer(serializers.ModelSerializer):
             "original_url",
             "metadata",
             "faces",
+            "likes_count",
+            "comments_count",
+            "liked_by_user",
+            "likes",
+            "comments",
             "created_at",
             "updated_at",
         ]
         read_only_fields = [
             "id",
             "sha256",
+            "owner",
+            "owner_username",
+            "can_edit",
             "storage_url",
             "storage_path",
             "keyword_names",
@@ -102,9 +124,21 @@ class AssetSerializer(serializers.ModelSerializer):
             "original_url",
             "metadata",
             "faces",
+            "likes_count",
+            "comments_count",
+            "liked_by_user",
+            "likes",
+            "comments",
             "created_at",
             "updated_at",
         ]
+    
+    def get_can_edit(self, obj):
+        """Check if current user can edit this asset"""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.owner == request.user
 
     def get_thumbnail_url(self, obj):
         """Get the best available thumbnail URL (prefer medium size)"""
@@ -158,6 +192,39 @@ class AssetSerializer(serializers.ModelSerializer):
             pass
         return []
 
+    def get_likes_count(self, obj):
+        """Get the number of likes for this asset"""
+        return obj.likes.count()
+
+    def get_comments_count(self, obj):
+        """Get the number of comments for this asset"""
+        return obj.comments.count()
+
+    def get_liked_by_user(self, obj):
+        """Check if the current user has liked this asset"""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.likes.filter(user=request.user).exists()
+
+    def get_likes(self, obj):
+        """Get all likes for this asset as a list of full names"""
+        likes = obj.likes.select_related("user").all()
+        names = []
+        for like in likes:
+            user = like.user
+            # Combine first_name and last_name, fallback to username if names not set
+            full_name = f"{user.first_name} {user.last_name}".strip()
+            if not full_name:
+                full_name = user.username
+            names.append(full_name)
+        return names
+
+    def get_comments(self, obj):
+        """Get all comments for this asset"""
+        comments = obj.comments.select_related("user").all()
+        return CommentSerializer(comments, many=True, context=self.context).data
+
 
 class AssetGallerySerializer(serializers.ModelSerializer):
     """Lightweight serializer for gallery listing.
@@ -167,6 +234,9 @@ class AssetGallerySerializer(serializers.ModelSerializer):
     thumbnail_url = serializers.SerializerMethodField()
     preview_url = serializers.SerializerMethodField()
     original_url = serializers.SerializerMethodField()
+    likes_count = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
+    liked_by_user = serializers.SerializerMethodField()
 
     class Meta:
         model = Asset
@@ -182,6 +252,9 @@ class AssetGallerySerializer(serializers.ModelSerializer):
             "storage_url",
             "mime_type",
             "description",
+            "likes_count",
+            "comments_count",
+            "liked_by_user",
         ]
         read_only_fields = fields
 
@@ -198,16 +271,47 @@ class AssetGallerySerializer(serializers.ModelSerializer):
     def get_original_url(self, obj):
         return obj.storage_url
 
+    def get_likes_count(self, obj):
+        """Get the number of likes for this asset"""
+        return obj.likes.count()
 
-class AlbumSerializer(serializers.ModelSerializer):
-    """Serializer for photo Album model"""
+    def get_comments_count(self, obj):
+        """Get the number of comments for this asset"""
+        return obj.comments.count()
 
-    photo_count = serializers.SerializerMethodField()
+    def get_liked_by_user(self, obj):
+        """Check if the current user has liked this asset"""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.likes.filter(user=request.user).exists()
+
+
+class LikeSerializer(serializers.ModelSerializer):
+    """Serializer for Like model"""
+
+    username = serializers.CharField(source="user.username", read_only=True)
 
     class Meta:
-        model = Album
-        fields = ["id", "title", "description", "cover_asset", "photo_count", "created_at", "updated_at"]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        model = Like
+        fields = ["id", "asset", "user", "username", "created_at"]
+        read_only_fields = ["id", "user", "username", "created_at"]
 
-    def get_photo_count(self, obj):
-        return obj.assets.count()
+
+class CommentSerializer(serializers.ModelSerializer):
+    """Serializer for Comment model"""
+
+    username = serializers.CharField(source="user.username", read_only=True)
+    can_edit = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = ["id", "asset", "user", "username", "content", "created_at", "updated_at", "can_edit"]
+        read_only_fields = ["id", "user", "username", "created_at", "updated_at", "can_edit"]
+
+    def get_can_edit(self, obj):
+        """Check if current user can edit this comment"""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.user == request.user

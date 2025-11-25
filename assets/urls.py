@@ -5,10 +5,11 @@ from . import views
 
 router = DefaultRouter()
 # Register specific prefixes BEFORE the catch-all AssetViewSet to avoid collisions
-router.register(r"albums", views.AlbumViewSet)
 router.register(r"storage", views.StorageViewSet, basename="storage")  # Simplified storage API
 router.register(r"storage-backends", views.StorageBackendViewSet)  # Advanced API
 router.register(r"storage-buckets", views.StorageBucketViewSet)  # Advanced API
+router.register(r"likes", views.LikeViewSet, basename="like")  # Likes on assets
+router.register(r"comments", views.CommentViewSet, basename="comment")  # Comments on assets
 router.register(r"", views.AssetViewSet, basename="asset")
 
 urlpatterns = [

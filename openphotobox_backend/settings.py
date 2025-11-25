@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "drf_spectacular",
     # Local apps
+    "albums",
     "assets",
     "people",
     "metadata",

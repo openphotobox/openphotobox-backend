@@ -92,7 +92,7 @@ class UploadService:
 
         return base_path / bucket_purpose / storage_key
 
-    def save_uploaded_file(self, file, bucket, metadata=None):
+    def save_uploaded_file(self, file, bucket, metadata=None, owner=None):
         """
         Save an uploaded file to local filesystem storage.
 
@@ -108,6 +108,7 @@ class UploadService:
             file: Django UploadedFile object
             bucket (StorageBucket): Target storage bucket
             metadata (dict, optional): Additional metadata
+            owner (User, optional): User who owns this asset
 
         Returns:
             Asset: Created or existing asset record
@@ -157,8 +158,13 @@ class UploadService:
 
         # Create asset record
         metadata = metadata or {}
+        
+        if not owner:
+            raise ValidationError("Owner is required for asset creation")
+        
         asset = Asset.objects.create(
             sha256=sha256_hash,
+            owner=owner,
             storage_bucket=bucket,
             storage_key=storage_key,
             mime_type=file.content_type or "application/octet-stream",
