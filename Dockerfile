@@ -12,8 +12,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy requirements
 COPY requirements.txt .
 
+# Install to a virtual environment to make copying faster
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-cache-dir -r requirements.txt
+    python -m venv /opt/venv && \
+    /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # Runtime stage
 FROM python:3.12-slim
@@ -26,9 +28,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Python packages from builder
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+# Copy virtual environment from builder (much faster than copying site-packages)
+COPY --from=builder --link /opt/venv /opt/venv
+
+# Set PATH to use the virtual environment
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy project files
 COPY . .
