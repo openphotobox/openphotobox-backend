@@ -12,10 +12,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy requirements
 COPY requirements.txt .
 
-# Install to a virtual environment to make copying faster
-RUN --mount=type=cache,target=/root/.cache/pip \
-    python -m venv /opt/venv && \
-    /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
+# Install dependencies with CPU-only PyTorch (saves ~1.5GB)
+RUN python -m venv /opt/venv && \
+    /opt/venv/bin/pip install --upgrade pip && \
+    # Use PyTorch CPU index for all installations
+    /opt/venv/bin/pip install --no-cache-dir -r requirements.txt \
+        --extra-index-url https://download.pytorch.org/whl/cpu && \
+    # Aggressive cleanup to save disk space
+    find /opt/venv -type d \( -name "tests" -o -name "test" -o -name __pycache__ \) -exec rm -rf {} + 2>/dev/null || true && \
+    find /opt/venv -type f \( -name "*.pyc" -o -name "*.pyo" -o -name "*.a" \) -delete && \
+    rm -rf /opt/venv/lib/python3.12/site-packages/torch/test /opt/venv/share 2>/dev/null || true
 
 # Runtime stage
 FROM python:3.12-slim
