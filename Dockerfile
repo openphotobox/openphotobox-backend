@@ -17,7 +17,7 @@ RUN python -m venv /opt/venv && \
     /opt/venv/bin/pip install --upgrade pip && \
     # Use PyTorch CPU index for all installations
     /opt/venv/bin/pip install --no-cache-dir -r requirements.txt \
-        --extra-index-url https://download.pytorch.org/whl/cpu && \
+        --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Runtime stage
 FROM python:3.12-slim
@@ -27,7 +27,7 @@ WORKDIR /app
 # Install only runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
-    netcat-traditional \
+    netcat-traditional
 
 # Copy virtual environment from builder (much faster than copying site-packages)
 COPY --from=builder --link /opt/venv /opt/venv
