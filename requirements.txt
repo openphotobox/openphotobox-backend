@@ -20,3 +20,11 @@ insightface==0.7.3
 onnxruntime==1.23.2
 django-extensions==4.1
 gunicorn==23.0.0
+# OpenTelemetry for distributed tracing
+opentelemetry-distro==0.48b0
+opentelemetry-exporter-otlp==1.27.0
+opentelemetry-instrumentation-django==0.48b0
+opentelemetry-instrumentation-psycopg2==0.48b0
+opentelemetry-instrumentation-redis==0.48b0
+opentelemetry-instrumentation-celery==0.48b0
+opentelemetry-instrumentation-requests==0.48b0

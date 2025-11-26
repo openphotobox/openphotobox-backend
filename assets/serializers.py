@@ -142,10 +142,18 @@ class AssetSerializer(serializers.ModelSerializer):
 
     def get_thumbnail_url(self, obj):
         """Get the best available thumbnail URL (prefer medium size)"""
-        # Try to get medium thumbnail first, then fall back to small
-        thumbnail = obj.thumbnails.filter(is_ready=True, size="md").first()
+        # Use prefetched thumbnails to avoid N+1 queries
+        thumbnails = obj.thumbnails.all()  # Uses prefetched data
+        thumbnail = None
+        for t in thumbnails:
+            if t.size == "md":
+                thumbnail = t
+                break
         if not thumbnail:
-            thumbnail = obj.thumbnails.filter(is_ready=True, size="sm").first()
+            for t in thumbnails:
+                if t.size == "sm":
+                    thumbnail = t
+                    break
 
         if thumbnail:
             return thumbnail.storage_url
@@ -155,14 +163,17 @@ class AssetSerializer(serializers.ModelSerializer):
 
     def get_thumbnail_urls(self, obj):
         """Get all available thumbnail URLs by size"""
-        thumbnails = obj.thumbnails.filter(is_ready=True)
+        # Use prefetched thumbnails to avoid N+1 queries
+        thumbnails = obj.thumbnails.all()  # Uses prefetched data
         return {thumbnail.size: thumbnail.storage_url for thumbnail in thumbnails}
 
     def get_preview_url(self, obj):
         """Get the preview image URL for fullscreen viewing (2048px)"""
-        preview = obj.thumbnails.filter(is_ready=True, size="preview").first()
-        if preview:
-            return preview.storage_url
+        # Use prefetched thumbnails to avoid N+1 queries
+        thumbnails = obj.thumbnails.all()  # Uses prefetched data
+        for t in thumbnails:
+            if t.size == "preview":
+                return t.storage_url
         # Fallback to original if preview not available
         return obj.storage_url
 
@@ -194,22 +205,30 @@ class AssetSerializer(serializers.ModelSerializer):
 
     def get_likes_count(self, obj):
         """Get the number of likes for this asset"""
-        return obj.likes.count()
+        # Use prefetched likes to avoid N+1 query
+        return len(obj.likes.all())
 
     def get_comments_count(self, obj):
         """Get the number of comments for this asset"""
-        return obj.comments.count()
+        # Use prefetched comments to avoid N+1 query
+        return len(obj.comments.all())
 
     def get_liked_by_user(self, obj):
         """Check if the current user has liked this asset"""
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return False
-        return obj.likes.filter(user=request.user).exists()
+        # Use prefetched likes to avoid N+1 query
+        user_id = request.user.id
+        for like in obj.likes.all():
+            if like.user_id == user_id:
+                return True
+        return False
 
     def get_likes(self, obj):
         """Get all likes for this asset as a list of full names"""
-        likes = obj.likes.select_related("user").all()
+        # Use prefetched likes (already has user data from prefetch)
+        likes = obj.likes.all()
         names = []
         for like in likes:
             user = like.user
@@ -222,7 +241,8 @@ class AssetSerializer(serializers.ModelSerializer):
 
     def get_comments(self, obj):
         """Get all comments for this asset"""
-        comments = obj.comments.select_related("user").all()
+        # Use prefetched comments (already has user data from prefetch)
+        comments = obj.comments.all()
         return CommentSerializer(comments, many=True, context=self.context).data
 
 
@@ -259,32 +279,52 @@ class AssetGallerySerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_thumbnail_url(self, obj):
-        thumbnail = obj.thumbnails.filter(is_ready=True, size="sm").first()
+        # Use prefetched thumbnails to avoid N+1 queries
+        thumbnails = obj.thumbnails.all()  # Uses prefetched data
+        thumbnail = None
+        for t in thumbnails:
+            if t.size == "sm":
+                thumbnail = t
+                break
         if not thumbnail:
-            thumbnail = obj.thumbnails.filter(is_ready=True, size="md").first()
+            for t in thumbnails:
+                if t.size == "md":
+                    thumbnail = t
+                    break
         return thumbnail.storage_url if thumbnail else obj.storage_url
 
     def get_preview_url(self, obj):
-        preview = obj.thumbnails.filter(is_ready=True, size="preview").first()
-        return preview.storage_url if preview else obj.storage_url
+        # Use prefetched thumbnails to avoid N+1 queries
+        thumbnails = obj.thumbnails.all()  # Uses prefetched data
+        for t in thumbnails:
+            if t.size == "preview":
+                return t.storage_url
+        return obj.storage_url
 
     def get_original_url(self, obj):
         return obj.storage_url
 
     def get_likes_count(self, obj):
         """Get the number of likes for this asset"""
-        return obj.likes.count()
+        # Use prefetched likes to avoid N+1 query
+        return len(obj.likes.all())
 
     def get_comments_count(self, obj):
         """Get the number of comments for this asset"""
-        return obj.comments.count()
+        # Use prefetched comments to avoid N+1 query
+        return len(obj.comments.all())
 
     def get_liked_by_user(self, obj):
         """Check if the current user has liked this asset"""
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return False
-        return obj.likes.filter(user=request.user).exists()
+        # Use prefetched likes to avoid N+1 query
+        user_id = request.user.id
+        for like in obj.likes.all():
+            if like.user_id == user_id:
+                return True
+        return False
 
 
 class LikeSerializer(serializers.ModelSerializer):

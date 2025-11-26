@@ -85,7 +85,80 @@ Or add it to your `.env` file:
 
 ```
 STORAGE_PATH=/var/photos
+DATABASE_URL=postgresql://archive:archive@localhost:5432/archive
+REDIS_URL=redis://localhost:6379/0
 ```
+
+## OpenTelemetry / Distributed Tracing
+
+OpenPhotobox includes built-in OpenTelemetry instrumentation to help you understand application performance, view latency, database query times, and background task execution.
+
+### What Gets Traced
+
+- **Django Views**: HTTP request/response cycles with status codes and route patterns
+- **Database Queries**: PostgreSQL query execution times with query text as span attributes
+- **Redis Operations**: Cache hits/misses and timing
+- **Celery Tasks**: Background task execution (face detection, metadata processing, etc.)
+- **HTTP Requests**: Outbound API calls (if any)
+
+### Configuration
+
+Set these environment variables to configure tracing:
+
+```bash
+# Enable/disable tracing (default: true)
+OTEL_ENABLED=true
+
+# OTLP endpoint for your tracing backend (e.g., Grafana Tempo)
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+
+# Service name that appears in traces
+OTEL_SERVICE_NAME=openphotobox-backend
+
+# Environment tag (development, staging, production)
+OTEL_ENVIRONMENT=development
+```
+
+### Example: Using with Grafana Tempo
+
+If you have Tempo running locally or in Docker:
+
+```bash
+# For Tempo with OTLP HTTP receiver on port 4318
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+
+# Or for Docker Compose (service name)
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4318
+```
+
+Then start your services normally:
+
+```bash
+# Django server will export traces
+python manage.py runserver
+
+# Celery workers will export traces
+python start_worker.py
+
+# Celery beat will export traces
+python start_beat.py
+```
+
+### Disabling Tracing
+
+To completely disable tracing:
+
+```bash
+export OTEL_ENABLED=false
+```
+
+### Viewing Traces
+
+With Tempo + Grafana:
+1. Open Grafana (typically `http://localhost:3000`)
+2. Go to Explore → Select Tempo data source
+3. Search for traces by service name or trace ID
+4. Analyze view latency, slow queries, and task execution times
 
 ## Storage Configuration
 

@@ -136,6 +136,14 @@ class Asset(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["-taken_at", "-created_at"]),
+            models.Index(fields=["owner"]),
+            models.Index(fields=["storage_bucket"]),
+        ]
+        ordering = ["-taken_at", "-created_at"]
+
     def __str__(self):
         return f"Photo {self.id} ({self.mime_type})"
 

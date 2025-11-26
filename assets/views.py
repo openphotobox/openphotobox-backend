@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from django.core.exceptions import ValidationError
+from django.db import models
 from django.db.models import Q
 from django.http import FileResponse, Http404, StreamingHttpResponse
 from rest_framework import permissions, status, viewsets
@@ -11,7 +12,7 @@ from rest_framework.response import Response
 
 from openphotobox_backend.pagination import AssetCursorPagination
 
-from .models import Asset, Comment, Like, StorageBackend, StorageBucket
+from .models import Asset, AssetThumbnail, Comment, Like, StorageBackend, StorageBucket
 from .serializers import (
     AssetGallerySerializer,
     AssetSerializer,
@@ -34,14 +35,90 @@ class AssetViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = AssetCursorPagination
 
+    def get_serializer_class(self):
+        """Use lightweight serializer for list actions to improve performance"""
+        if self.action == "list":
+            return AssetGallerySerializer
+        return AssetSerializer
+
     def get_queryset(self):
         # Filter to only accessible assets based on album ownership/sharing
+        from django.contrib.postgres.aggregates import ArrayAgg
+        from django.db.models import Prefetch
+        from django.db.models.functions import Coalesce
+
         from albums.permissions import get_accessible_assets
 
         queryset = get_accessible_assets(self.request.user)
+
+        # Build list of select_related paths for OneToOne/ForeignKey relationships
+        select_related_fields = ["storage_bucket", "storage_bucket__backend", "owner"]
+
+        # Add metadata to select_related (it's a OneToOne relationship)
+        try:
+            from metadata.models import AssetMetadata
+
+            select_related_fields.append("metadata")
+        except ImportError:
+            pass
+
+        # Build list of prefetch operations to avoid N+1 queries
+        prefetch_ops = [
+            Prefetch("thumbnails", queryset=AssetThumbnail.objects.filter(is_ready=True)),
+            Prefetch("likes", queryset=Like.objects.select_related("user")),
+            Prefetch("comments", queryset=Comment.objects.select_related("user")),
+        ]
+
+        # Prefetch albums with their owners to avoid N+1 when checking permissions
+        try:
+            from albums.models import Album
+
+            prefetch_ops.append(Prefetch("albums", queryset=Album.objects.select_related("owner")))
+        except ImportError:
+            pass
+
+        # Prefetch faces with all their nested relationships
+        try:
+            from people.models import Face, FaceThumbnail
+
+            faces_prefetch = Prefetch(
+                "faces",
+                queryset=Face.objects.select_related(
+                    "person", "person__headshot_face", "thumbnail", "confirmed_by"
+                ).prefetch_related(
+                    Prefetch("person__headshot_face__thumbnail", queryset=FaceThumbnail.objects.filter(is_ready=True))
+                ),
+            )
+            prefetch_ops.append(faces_prefetch)
+        except ImportError:
+            # People app not available, just prefetch faces without relations
+            prefetch_ops.append("faces")
+
+        # Annotate keyword_names to avoid N+1 queries
+        try:
+            from metadata.models import AssetKeyword, KeywordTag
+
+            # Use a subquery to get keyword names as an array
+            queryset = queryset.annotate(
+                keyword_names=Coalesce(
+                    ArrayAgg(
+                        "assetkeyword__keyword__name",
+                        distinct=True,
+                        filter=models.Q(assetkeyword__keyword__isnull=False),
+                    ),
+                    [],
+                )
+            )
+        except ImportError:
+            # Metadata app not available, just set empty array
+            from django.contrib.postgres.fields import ArrayField
+            from django.db.models import Value
+
+            queryset = queryset.annotate(keyword_names=Value([], output_field=ArrayField(models.CharField())))
+
         queryset = (
-            queryset.prefetch_related("thumbnails")
-            .select_related("storage_bucket", "storage_bucket__backend", "owner")
+            queryset.select_related(*select_related_fields)
+            .prefetch_related(*prefetch_ops)
             .order_by("-taken_at", "-created_at")
         )
         # Only show assets that have at least one ready thumbnail to avoid heavy original loads
@@ -88,24 +165,19 @@ class AssetViewSet(viewsets.ModelViewSet):
             # If people app is unavailable for any reason, return no results for safety
             queryset = queryset.none()
 
-        # Filter by album
+        # Filter by album - use join instead of subquery for better performance
         album_id = self.request.query_params.get("album") or self.request.query_params.get("album_id")
         albums_param = self.request.query_params.get("albums") or self.request.query_params.get("album_ids")
         if albums_param or album_id:
             try:
-                from albums.models import AlbumAsset
-
                 album_ids = []
                 if albums_param:
                     album_ids = [a.strip() for a in albums_param.split(",") if a and a.strip()]
                 if album_id:
                     album_ids.append(album_id)
                 if album_ids:
-                    queryset = queryset.filter(
-                        id__in=AlbumAsset.objects.filter(album_id__in=album_ids)
-                        .values_list("asset_id", flat=True)
-                        .distinct()
-                    )
+                    # Use JOIN instead of subquery for better performance
+                    queryset = queryset.filter(albums__id__in=album_ids).distinct()
             except Exception:
                 queryset = queryset.none()
 

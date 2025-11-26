@@ -34,6 +34,11 @@ services:
     platform: linux/amd64
     env_file:
       - .env
+    environment:
+      - OTEL_ENABLED=${OTEL_ENABLED:-true}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-openphotobox-backend}
+      - OTEL_ENVIRONMENT=${OTEL_ENVIRONMENT:-development}
     depends_on:
       - db
       - redis
@@ -52,6 +57,11 @@ services:
     platform: linux/amd64
     env_file:
       - .env
+    environment:
+      - OTEL_ENABLED=${OTEL_ENABLED:-true}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-openphotobox-backend}
+      - OTEL_ENVIRONMENT=${OTEL_ENVIRONMENT:-development}
     depends_on:
       - backend
       - db
@@ -69,6 +79,11 @@ services:
     platform: linux/amd64
     env_file:
       - .env
+    environment:
+      - OTEL_ENABLED=${OTEL_ENABLED:-true}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-openphotobox-backend}
+      - OTEL_ENVIRONMENT=${OTEL_ENVIRONMENT:-development}
     depends_on:
       - backend
       - db

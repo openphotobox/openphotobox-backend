@@ -45,27 +45,16 @@ def get_accessible_assets(user) -> QuerySet:
     Returns:
         QuerySet of Asset objects the user can access
     """
-    from albums.models import AlbumAsset
     from assets.models import Asset
 
     if not user or not user.is_authenticated:
         return Asset.objects.none()
 
-    # Get accessible albums
-    accessible_albums = get_accessible_albums(user)
-
-    # Get assets in accessible albums
-    assets_in_albums = Asset.objects.filter(
-        id__in=AlbumAsset.objects.filter(album__in=accessible_albums).values_list("asset_id", flat=True)
-    )
-
-    # Get assets owned by user that aren't in any album
-    assets_not_in_albums = Asset.objects.filter(owner=user).exclude(
-        id__in=AlbumAsset.objects.values_list("asset_id", flat=True)
-    )
-
-    # Combine both querysets
-    return assets_in_albums | assets_not_in_albums
+    # Use a single Q query for better performance instead of combining querysets
+    # This generates a single SQL query with OR conditions instead of multiple queries
+    return Asset.objects.filter(
+        Q(albums__owner=user) | Q(albums__shares__shared_with=user) | Q(owner=user, albums__isnull=True)
+    ).distinct()
 
 
 def can_view_album(user, album) -> bool:
