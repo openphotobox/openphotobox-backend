@@ -1,36 +1,38 @@
 import numpy as np
 from django.db import connection
-from rest_framework import permissions
+from django.db.models import Prefetch
+from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from assets.models import Asset, AssetThumbnail, Comment, Like
+from assets.serializers import AssetGallerySerializer
 
 from .services import embed_text
 
 
-class ClipSearchView(APIView):
+class SearchView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        """Search assets by CLIP text embedding; returns ranked asset IDs with similarity.
+        """Search assets using CLIP text embeddings or filter by people/albums.
 
         Query params:
-          - q (text), limit (default 50)
+          - q (text, optional): Search query for CLIP semantic search
+          - limit (default 50): Maximum number of results
           - people (comma-separated UUIDs) or person (single UUID)
           - people_mode: 'all' | 'any' (default 'all')
           - albums (comma-separated UUIDs) or album (single UUID)
+
+        If no 'q' parameter is provided but people IDs are given, returns photos
+        filtered by people without performing CLIP search.
         """
         query = request.query_params.get("q", "")
-        if not query:
-            return Response({"results": []})
 
         try:
             limit = int(request.query_params.get("limit", 50))
         except Exception:
             limit = 50
-
-        text_emb = embed_text(query)
-        emb_list = np.asarray(text_emb, dtype=np.float32).astype(float).tolist()
-        emb_str = "[" + ",".join(str(x) for x in emb_list) + "]"
 
         # Filter to only accessible assets
         from albums.permissions import get_accessible_assets
@@ -38,19 +40,31 @@ class ClipSearchView(APIView):
         accessible_assets = get_accessible_assets(request.user)
         allowed_asset_ids = set(accessible_assets.values_list("id", flat=True))
 
-        # Optional additional filtering by people and albums
-        try:
-            # Build allowed set by people filters
-            people_param = request.query_params.get("people") or request.query_params.get("person_ids")
-            single_person = request.query_params.get("person")
-            people_mode = (request.query_params.get("people_mode") or "all").lower()
-            people_ids = []
-            if people_param:
-                people_ids = [p.strip() for p in people_param.split(",") if p and p.strip()]
-            if single_person:
-                people_ids = [single_person]
+        # Parse people and album filters
+        people_param = request.query_params.get("people") or request.query_params.get("person_ids")
+        single_person = request.query_params.get("person")
+        people_mode = (request.query_params.get("people_mode") or "all").lower()
+        people_ids = []
+        if people_param:
+            people_ids = [p.strip() for p in people_param.split(",") if p and p.strip()]
+        if single_person:
+            people_ids = [single_person]
 
-            if people_ids:
+        albums_param = request.query_params.get("albums") or request.query_params.get("album_ids")
+        single_album = request.query_params.get("album")
+        album_ids = []
+        if albums_param:
+            album_ids = [a.strip() for a in albums_param.split(",") if a and a.strip()]
+        if single_album:
+            album_ids = [single_album]
+
+        # Determine search strategy
+        use_clip_search = bool(query)
+        asset_id_order = []  # List of (asset_id, order_key) tuples
+
+        if not use_clip_search and people_ids:
+            # People-only search mode: skip CLIP embeddings entirely
+            try:
                 from people.models import Face
 
                 if people_mode not in ("all", "any"):
@@ -69,66 +83,134 @@ class ClipSearchView(APIView):
                         Face.objects.filter(person_id__in=people_ids).values_list("asset_id", flat=True).distinct()
                     )
 
-            # Apply album filters (any-of)
-            albums_param = request.query_params.get("albums") or request.query_params.get("album_ids")
-            single_album = request.query_params.get("album")
-            album_ids = []
-            if albums_param:
-                album_ids = [a.strip() for a in albums_param.split(",") if a and a.strip()]
-            if single_album:
-                album_ids = [single_album]
-            if album_ids:
-                from assets.models import AlbumAsset
+                # Apply album filters if present
+                if album_ids:
+                    from albums.models import AlbumAsset
 
-                album_asset_ids = set(
-                    AlbumAsset.objects.filter(album_id__in=album_ids).values_list("asset_id", flat=True).distinct()
-                )
-                if allowed_asset_ids is None:
-                    allowed_asset_ids = album_asset_ids
-                else:
+                    album_asset_ids = set(
+                        AlbumAsset.objects.filter(album_id__in=album_ids).values_list("asset_id", flat=True).distinct()
+                    )
                     allowed_asset_ids = allowed_asset_ids & album_asset_ids
-        except Exception:
-            # On any issues with optional filters, fall back to no restriction
-            allowed_asset_ids = None
 
-        # Strategy: query more rows if filters are present, then filter client-side
-        multiplier = 1
-        rows_filtered = []
-        while True:
-            effective_limit = limit * max(multiplier, 1)
-            # Cap to a reasonable upper bound to avoid heavy queries
-            effective_limit = min(effective_limit, max(limit * 10, 500))
+                # For people-only mode, we'll order by taken_at later in the queryset
+                asset_id_order = [(aid, 0) for aid in allowed_asset_ids]
+            except Exception:
+                asset_id_order = []
 
-            # Cosine similarity via pgvector: 1 - (<=>) on normalized vectors
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    SELECT ce.asset_id,
-                           1 - (ce.embedding <=> %s::vector) AS cosine_sim,
-                           (ce.embedding <=> %s::vector) AS distance
-                    FROM clip_embeddings AS ce
-                    ORDER BY distance ASC
-                    LIMIT %s
-                    """,
-                    [emb_str, emb_str, effective_limit],
-                )
-                rows = cursor.fetchall()
+        elif use_clip_search:
+            # CLIP search mode
+            text_emb = embed_text(query)
+            emb_list = np.asarray(text_emb, dtype=np.float32).astype(float).tolist()
+            emb_str = "[" + ",".join(str(x) for x in emb_list) + "]"
 
-            # Post-filter if needed, preserving order
-            if allowed_asset_ids is not None:
-                rows_filtered = [r for r in rows if str(r[0]) in {str(x) for x in allowed_asset_ids}]
-            else:
-                rows_filtered = rows
+            # Apply people filters to allowed_asset_ids
+            try:
+                if people_ids:
+                    from people.models import Face
 
-            if len(rows_filtered) >= limit or effective_limit >= max(limit * 10, 500):
-                break
-            multiplier += 2
+                    if people_mode not in ("all", "any"):
+                        people_mode = "all"
+                    if people_mode == "all":
+                        # Intersect assets that contain each specified person
+                        intersect_ids = None
+                        for pid in people_ids:
+                            ids_for_pid = set(Face.objects.filter(person_id=pid).values_list("asset_id", flat=True))
+                            intersect_ids = ids_for_pid if intersect_ids is None else (intersect_ids & ids_for_pid)
+                            if not intersect_ids:
+                                break
+                        allowed_asset_ids = intersect_ids or set()
+                    else:
+                        allowed_asset_ids = set(
+                            Face.objects.filter(person_id__in=people_ids).values_list("asset_id", flat=True).distinct()
+                        )
 
-        results = [
-            {"asset_id": str(row[0]), "similarity": float(row[1]), "distance": float(row[2])}
-            for row in rows_filtered[:limit]
+                # Apply album filters
+                if album_ids:
+                    from albums.models import AlbumAsset
+
+                    album_asset_ids = set(
+                        AlbumAsset.objects.filter(album_id__in=album_ids).values_list("asset_id", flat=True).distinct()
+                    )
+                    allowed_asset_ids = allowed_asset_ids & album_asset_ids
+            except Exception:
+                pass
+
+            # Strategy: query more rows if filters are present, then filter client-side
+            multiplier = 1
+            rows_filtered = []
+            while True:
+                effective_limit = limit * max(multiplier, 1)
+                # Cap to a reasonable upper bound to avoid heavy queries
+                effective_limit = min(effective_limit, max(limit * 10, 500))
+
+                # Cosine similarity via pgvector: 1 - (<=>) on normalized vectors
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT ce.asset_id,
+                               1 - (ce.embedding <=> %s::vector) AS cosine_sim,
+                               (ce.embedding <=> %s::vector) AS distance
+                        FROM clip_embeddings AS ce
+                        ORDER BY distance ASC
+                        LIMIT %s
+                        """,
+                        [emb_str, emb_str, effective_limit],
+                    )
+                    rows = cursor.fetchall()
+
+                # Post-filter if needed, preserving order
+                if allowed_asset_ids is not None:
+                    rows_filtered = [r for r in rows if str(r[0]) in {str(x) for x in allowed_asset_ids}]
+                else:
+                    rows_filtered = rows
+
+                if len(rows_filtered) >= limit or effective_limit >= max(limit * 10, 500):
+                    break
+                multiplier += 2
+
+            # Store asset IDs with their similarity scores for ordering
+            asset_id_order = [(str(row[0]), float(row[1])) for row in rows_filtered[:limit]]
+
+        else:
+            # No query and no people filters - return empty results
+            return Response({"results": []})
+
+        # Fetch actual Asset objects with proper prefetching
+        if not asset_id_order:
+            return Response({"results": []})
+
+        asset_ids = [aid for aid, _ in asset_id_order]
+
+        # Build queryset with same prefetching as AssetViewSet for performance
+        queryset = Asset.objects.filter(id__in=asset_ids)
+
+        # Prefetch thumbnails to avoid N+1 queries
+        prefetch_ops = [
+            Prefetch("thumbnails", queryset=AssetThumbnail.objects.filter(is_ready=True)),
+            Prefetch("likes", queryset=Like.objects.select_related("user")),
+            Prefetch("comments", queryset=Comment.objects.select_related("user")),
         ]
-        return Response({"results": results})
+
+        queryset = queryset.prefetch_related(*prefetch_ops).select_related(
+            "storage_bucket", "storage_bucket__backend", "owner"
+        )
+
+        # Order results
+        if use_clip_search:
+            # Preserve CLIP similarity order
+            assets_dict = {str(asset.id): asset for asset in queryset}
+            ordered_assets = [assets_dict[aid] for aid, _ in asset_id_order if aid in assets_dict]
+        else:
+            # For people-only mode, order by taken_at descending
+            ordered_assets = list(queryset.order_by("-taken_at", "-created_at"))
+
+        # Serialize with AssetGallerySerializer to include thumbnails
+        serializer = AssetGallerySerializer(ordered_assets, many=True, context={"request": request})
+        return Response({"results": serializer.data})
+
+
+# Backward compatibility alias
+ClipSearchView = SearchView
 
 
 class ClipNeighborsView(APIView):
