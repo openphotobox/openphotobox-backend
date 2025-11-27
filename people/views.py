@@ -26,7 +26,7 @@ from .serializers import (
     PersonMergeSuggestionSerializer,
     PersonSerializer,
 )
-from .tasks import _calculate_centroid, create_fresh_face_app
+from .tasks import _calculate_centroid, get_face_app
 
 
 class PersonViewSet(viewsets.ModelViewSet):
@@ -385,13 +385,19 @@ class FaceViewSet(viewsets.ModelViewSet):
 
         # Compute embedding synchronously so assignment UI has similarity immediately
         try:
+            from io import BytesIO
+
             import cv2 as _cv2
             import numpy as _np
-            import requests
 
-            resp = requests.get(asset.storage_url, timeout=15)
-            resp.raise_for_status()
-            img_array = _np.frombuffer(resp.content, dtype=_np.uint8)
+            # Use local filesystem access instead of HTTP download for better performance
+            from assets.services import UploadService
+
+            upload_service = UploadService(asset.storage_bucket.backend)
+            file_path = upload_service.get_file_path(asset)
+            with open(file_path, "rb") as f:
+                img_data = BytesIO(f.read())
+            img_array = _np.frombuffer(img_data.getvalue(), dtype=_np.uint8)
             image = _cv2.imdecode(img_array, _cv2.IMREAD_COLOR)
             if image is not None:
                 H, W = image.shape[:2]
@@ -401,7 +407,8 @@ class FaceViewSet(viewsets.ModelViewSet):
                 y2 = min(H, int((y + h) * H))
                 if x2 > x1 and y2 > y1:
                     crop = image[y1:y2, x1:x2]
-                    app = create_fresh_face_app()
+                    # Use singleton model instance instead of creating fresh one each time
+                    app = get_face_app()
                     dets = app.get(crop)
                     if dets:
                         det = max(dets, key=lambda d: (d.bbox[2] - d.bbox[0]) * (d.bbox[3] - d.bbox[1]))
@@ -472,7 +479,7 @@ class FaceViewSet(viewsets.ModelViewSet):
                     y2 = min(H, int((face.y + face.h) * H))
                     if x2 > x1 and y2 > y1:
                         crop = image[y1:y2, x1:x2]
-                        app = create_fresh_face_app()
+                        app = get_face_app()
                         dets = app.get(crop)
                         if dets:
                             det = max(dets, key=lambda d: (d.bbox[2] - d.bbox[0]) * (d.bbox[3] - d.bbox[1]))

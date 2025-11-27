@@ -4,7 +4,7 @@ from pathlib import Path
 
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import FileResponse, Http404, StreamingHttpResponse
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -22,6 +22,45 @@ from .serializers import (
     StorageBucketSerializer,
 )
 from .services import UploadService, get_default_upload_bucket
+
+
+class AssetViewSetV2(viewsets.ModelViewSet):
+    """
+    ViewSet for managing photo assets.
+    Supports filtering by date, keywords, visibility, etc.
+    """
+
+    queryset = Asset.objects.all()
+    serializer_class = AssetGallerySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        queryset = (
+            Asset.objects.filter(
+                Q(owner=user)  # they own the asset
+                | Q(albums__shares__shared_with=user)  # asset is in an album shared with them
+            )
+            .distinct()
+            .order_by("-taken_at", "-created_at")
+        )
+
+        # Minimal prefetching for AssetGallerySerializer
+        queryset = queryset.prefetch_related(
+            Prefetch("thumbnails", queryset=AssetThumbnail.objects.filter(is_ready=True)),
+            Prefetch("likes", queryset=Like.objects.select_related("user")),
+            Prefetch("comments", queryset=Comment.objects.select_related("user")),
+        )
+
+        # Filter by ready thumbnails to avoid showing unprocessed photos
+        queryset = queryset.filter(thumbnails__is_ready=True).distinct()
+
+        album_id = self.request.query_params.get("album") or self.request.query_params.get("album_id")
+        if album_id:
+            queryset = queryset.filter(albums__id=album_id)
+
+        return queryset
 
 
 class AssetViewSet(viewsets.ModelViewSet):
@@ -56,7 +95,7 @@ class AssetViewSet(viewsets.ModelViewSet):
 
         # Add metadata to select_related (it's a OneToOne relationship)
         try:
-            from metadata.models import AssetMetadata
+            import metadata.models  # noqa: F401
 
             select_related_fields.append("metadata")
         except ImportError:
@@ -96,7 +135,7 @@ class AssetViewSet(viewsets.ModelViewSet):
 
         # Annotate keyword_names to avoid N+1 queries
         try:
-            from metadata.models import AssetKeyword, KeywordTag
+            from metadata.models import AssetKeyword
 
             # Use a subquery to get keyword names as an array
             queryset = queryset.annotate(

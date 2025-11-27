@@ -12,9 +12,11 @@ router.register(r"likes", views.LikeViewSet, basename="like")  # Likes on assets
 router.register(r"comments", views.CommentViewSet, basename="comment")  # Comments on assets
 router.register(r"", views.AssetViewSet, basename="asset")
 
+
 urlpatterns = [
     path("", include(router.urls)),
 ]
+
 
 # Note:
 # - People and faces endpoints moved to people app

@@ -36,6 +36,7 @@ urlpatterns = [
     path("api/people/", include("people.urls")),  # People, faces, recognition
     path("api/metadata/", include("metadata.urls")),  # EXIF, keywords, CLIP embeddings
     path("api/events/stream/", stream_events, name="sse-events"),
+    path("api/v2/assets/", include("assets.urls_v2")),
     # Authentication endpoints can be added here later
     # path('api/auth/', include('rest_framework.urls')),
 ]
