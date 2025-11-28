@@ -193,7 +193,7 @@ def _generate_single_thumbnail(
 
         # Save thumbnail to memory with appropriate quality
         # Use quality 90 for preview size, 85 for smaller thumbnails
-        quality = 90 if size == "preview" else 85
+        quality = 80
         thumbnail_data = BytesIO()
         thumbnail_image.save(thumbnail_data, format="JPEG", quality=quality, optimize=True)
         thumbnail_size = thumbnail_data.tell()

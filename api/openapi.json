@@ -813,7 +813,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/PaginatedAssetList"
+                                    "$ref": "#/components/schemas/PaginatedAssetGalleryList"
                                 }
                             }
                         },
@@ -2656,10 +2656,10 @@
                 }
             }
         },
-        "/api/metadata/search/clip/": {
+        "/api/metadata/search/": {
             "get": {
-                "operationId": "metadata_search_clip_retrieve",
-                "description": "Search assets by CLIP text embedding; returns ranked asset IDs with similarity.\n\nQuery params:\n  - q (text), limit (default 50)\n  - people (comma-separated UUIDs) or person (single UUID)\n  - people_mode: 'all' | 'any' (default 'all')\n  - albums (comma-separated UUIDs) or album (single UUID)",
+                "operationId": "metadata_search_retrieve",
+                "description": "Search assets using CLIP text embeddings or filter by people/albums.\n\nQuery params:\n  - q (text, optional): Search query for CLIP semantic search\n  - limit (default 50): Maximum number of results\n  - people (comma-separated UUIDs) or person (single UUID)\n  - people_mode: 'all' | 'any' (default 'all')\n  - albums (comma-separated UUIDs) or album (single UUID)\n\nIf no 'q' parameter is provided but people IDs are given, returns photos\nfiltered by people without performing CLIP search.",
                 "tags": [
                     "metadata"
                 ],
@@ -4003,6 +4003,290 @@
                     }
                 }
             }
+        },
+        "/api/v2/assets/": {
+            "get": {
+                "operationId": "v2_assets_list",
+                "description": "ViewSet for managing photo assets.\nSupports filtering by date, keywords, visibility, etc.",
+                "parameters": [
+                    {
+                        "name": "cursor",
+                        "required": false,
+                        "in": "query",
+                        "description": "The pagination cursor value.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "required": false,
+                        "in": "query",
+                        "description": "Number of results to return per page.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "v2"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedAssetGalleryList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "v2_assets_create",
+                "description": "ViewSet for managing photo assets.\nSupports filtering by date, keywords, visibility, etc.",
+                "tags": [
+                    "v2"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AssetGallery"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AssetGallery"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AssetGallery"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AssetGallery"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v2/assets/{id}/": {
+            "get": {
+                "operationId": "v2_assets_retrieve",
+                "description": "ViewSet for managing photo assets.\nSupports filtering by date, keywords, visibility, etc.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this asset.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "v2"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AssetGallery"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "put": {
+                "operationId": "v2_assets_update",
+                "description": "ViewSet for managing photo assets.\nSupports filtering by date, keywords, visibility, etc.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this asset.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "v2"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AssetGallery"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AssetGallery"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AssetGallery"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AssetGallery"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "v2_assets_partial_update",
+                "description": "ViewSet for managing photo assets.\nSupports filtering by date, keywords, visibility, etc.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this asset.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "v2"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedAssetGallery"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedAssetGallery"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedAssetGallery"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AssetGallery"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "v2_assets_destroy",
+                "description": "ViewSet for managing photo assets.\nSupports filtering by date, keywords, visibility, etc.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "A UUID string identifying this asset.",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "v2"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "tokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -4266,6 +4550,89 @@
                     "width"
                 ]
             },
+            "AssetGallery": {
+                "type": "object",
+                "description": "Lightweight serializer for gallery listing.\nIncludes only fields needed to render the grid and viewer.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "width": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "height": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "taken_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "thumbnail_url": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "preview_url": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "original_url": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "storage_url": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "mime_type": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "description": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "User-provided description or caption for this photo"
+                    },
+                    "likes_count": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "comments_count": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "liked_by_user": {
+                        "type": "string",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "comments_count",
+                    "created_at",
+                    "description",
+                    "height",
+                    "id",
+                    "liked_by_user",
+                    "likes_count",
+                    "mime_type",
+                    "original_url",
+                    "preview_url",
+                    "storage_url",
+                    "taken_at",
+                    "thumbnail_url",
+                    "width"
+                ]
+            },
             "BackendTypeEnum": {
                 "enum": [
                     "local"
@@ -4496,7 +4863,7 @@
                     }
                 }
             },
-            "PaginatedAssetList": {
+            "PaginatedAssetGalleryList": {
                 "type": "object",
                 "required": [
                     "results"
@@ -4517,7 +4884,7 @@
                     "results": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/Asset"
+                            "$ref": "#/components/schemas/AssetGallery"
                         }
                     }
                 }
@@ -4870,6 +5237,73 @@
                     "updated_at": {
                         "type": "string",
                         "format": "date-time",
+                        "readOnly": true
+                    }
+                }
+            },
+            "PatchedAssetGallery": {
+                "type": "object",
+                "description": "Lightweight serializer for gallery listing.\nIncludes only fields needed to render the grid and viewer.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "width": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "height": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "taken_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "thumbnail_url": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "preview_url": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "original_url": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "storage_url": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "mime_type": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "description": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "User-provided description or caption for this photo"
+                    },
+                    "likes_count": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "comments_count": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "liked_by_user": {
+                        "type": "string",
                         "readOnly": true
                     }
                 }
